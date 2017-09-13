@@ -8,12 +8,15 @@ import pickle
 import numpy as np
 import os 
 
-def parse(self, exclusive = False):
+def parse(self, exclusive = False, training = True):
     meta = self.meta
     ext = '.parsed'
-    ann = self.FLAGS.annotation
-    if not os.path.isdir(ann):
-        msg = 'Annotation directory not found {} .'
+    if training:
+        ann = self.FLAGS.annotation
+    else:
+        ann = self.FLAGS.val_annotation
+    if not os.path.isfile(ann):
+        msg = 'Annotation file not found {} .'
         exit('Error: {}'.format(msg.format(ann)))
     print('\n{} parsing {}'.format(meta['model'], ann))
     # dumps = pascal_voc_clean_xml(ann, meta['labels'], exclusive)
@@ -21,7 +24,7 @@ def parse(self, exclusive = False):
     return dumps
 
 
-def _batch(self, chunk):
+def _batch(self, chunk, training = True):
     """
     Takes a chunk of parsed annotations
     returns value for placeholders of net's 
@@ -34,7 +37,10 @@ def _batch(self, chunk):
     # preprocess
     jpg = chunk[0]; w, h, allobj_ = chunk[1]
     allobj = deepcopy(allobj_)
-    path = os.path.join(self.FLAGS.dataset, jpg)
+    if training:
+        path = os.path.join(self.FLAGS.dataset, jpg)
+    else:
+        path = os.path.join(self.FLAGS.val_dataset, jpg)
     img = self.preprocess(path, allobj)
 
     # Calculate regression target
@@ -94,16 +100,20 @@ def _batch(self, chunk):
 
     return inp_feed_val, loss_feed_val
 
-def shuffle(self):
+def shuffle(self, training = True):
     batch = self.FLAGS.batch
-    data = self.parse()
+    data = self.parse(training = training)
     size = len(data)
 
     print('Dataset of {} instance(s)'.format(size))
     if batch > size: self.FLAGS.batch = batch = size
     batch_per_epoch = int(size / batch)
+    print("batch per epoch:", batch_per_epoch)
 
     for i in range(self.FLAGS.epoch):
+        if training:
+            self.meta['curr_epoch'] = i
+            print("EPOCH:", self.meta['curr_epoch'])
         shuffle_idx = perm(np.arange(size))
         for b in range(batch_per_epoch):
             # yield these
@@ -112,7 +122,8 @@ def shuffle(self):
 
             for j in range(b*batch, b*batch+batch):
                 train_instance = data[shuffle_idx[j]]
-                inp, new_feed = self._batch(train_instance)
+                
+                inp, new_feed = self._batch(train_instance, training = training)
 
                 if inp is None: continue
                 x_batch += [np.expand_dims(inp, 0)]

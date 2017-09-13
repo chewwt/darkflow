@@ -59,7 +59,10 @@ def preprocess(self, im, allobj = None):
 		im = cv2.imread(im)
 
 	if allobj is not None: # in training mode
-		result = imcv2_affine_trans(im)
+		try:
+			result = imcv2_affine_trans(im)
+		except Exception as e:
+			raise
 		im, dims, trans_param = result
 		scale, offs, flip = trans_param
 		for obj in allobj:
