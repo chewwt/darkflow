@@ -1,4 +1,5 @@
-from ...utils.pascal_voc_clean_xml import pascal_voc_clean_xml
+# from ...utils.pascal_voc_clean_xml import pascal_voc_clean_xml
+from ...utils.open_images_csv import open_images_csv
 from numpy.random import permutation as perm
 from ..yolo.predict import preprocess
 from ..yolo.data import shuffle

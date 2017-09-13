@@ -16,8 +16,12 @@ def cliHandler(args):
              os.path.join(FLAGS.imgdir,'out'), FLAGS.summary])
 
     # fix FLAGS.load to appropriate type
-    try: FLAGS.load = int(FLAGS.load)
-    except: pass
+    try: 
+        print(FLAGS.load)
+        FLAGS.load = int(FLAGS.load)
+        print(FLAGS.load)
+    except: 
+        pass
 
     tfnet = TFNet(FLAGS)
     
