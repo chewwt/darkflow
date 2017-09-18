@@ -18,7 +18,7 @@ class argHandler(dict):
         self.define('val_summary', './summary2/', 'path to TensorBoard validation summaries directory')
         self.define('annotation', '../pascal/VOCdevkit/ANN/', 'path to annotation directory')
         self.define('val_annotation', '../pascal/VOCdevkit/ANN/', 'path to validation annotation directory')
-        self.define('val_step', 10, 'validate once every N steps')
+        self.define('val_step', 1, 'validate once every N epoch')
         self.define('threshold', -0.1, 'detection threshold')
         self.define('model', '', 'configuration of choice')
         self.define('trainer', 'rmsprop', 'training algorithm')

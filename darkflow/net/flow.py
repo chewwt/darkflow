@@ -49,50 +49,61 @@ def train(self):
         step_now = self.FLAGS.load + i + 1
 
         # if prev_epoch is None or prev_epoch != self.meta['curr_epoch']:
-        if i % self.FLAGS.val_step == 0:
+        if i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
             train = [True, False]
             # prev_epoch = self.meta['curr_epoch']
         else:
             train = [True]
 
         for training in train:
-            if not training:    # validation
-                (x_batch, datum) = next(val_batches)
+            val_loss = None
 
-            feed_dict = {
-                loss_ph[key]: datum[key] 
-                    for key in loss_ph }
-            feed_dict[self.inp] = x_batch
-            feed_dict.update(self.feed)
+            for j, (v_batch, v_datum) in enumerate(val_batches):
+                if not training:    # validation
+                    (x_batch, datum) = (v_batch, v_datum)
 
-            if training:
-                fetches = [self.train_op, loss_op, self.summary_op] 
-                fetched = self.sess.run(fetches, feed_dict)
-                loss = fetched[1]
-                summary = fetched[2]
-                writer = self.writer
-            else:
-                fetches = [loss_op, self.summary_op] 
-                fetched = self.sess.run(fetches, feed_dict)
-                loss = fetched[0]
-                summary = fetched[1]
-                writer = self.val_writer
+                feed_dict = {
+                    loss_ph[key]: datum[key] 
+                        for key in loss_ph }
+                feed_dict[self.inp] = x_batch
+                feed_dict.update(self.feed)
 
-            if loss_mva is None: loss_mva = loss
-            loss_mva = .9 * loss_mva + .1 * loss
+                if training:
+                    fetches = [self.train_op, loss_op, self.summary_op] 
+                    fetched = self.sess.run(fetches, feed_dict)
+                    loss = fetched[1]
+                    summary = fetched[2]
+                    writer = self.writer
+                else:
+                    fetches = [loss_op, self.summary_op] 
+                    fetched = self.sess.run(fetches, feed_dict)
+                    loss = fetched[0]
+                    summary = fetched[1]
+                    writer = self.val_writer
 
-            writer.add_summary(summary, step_now)
+                if training:
+                    if loss_mva is None: loss_mva = loss
+                    loss_mva = .9 * loss_mva + .1 * loss
+                else:
+                    if val_loss is None: val_loss = loss
+                    val_loss = val_loss * (i / float(i + 1)) + loss * (1 / float(i + 1))
 
-            form = '{} {} step {} - loss {} - moving ave loss {}'
-            self.say(form.format("Validation - epoch" if not training else "", 
-                self.meta['curr_epoch'], step_now, loss, loss_mva))
-        
-            if training:
-                profile += [(loss, loss_mva)]
+                writer.add_summary(summary, step_now)
 
-                ckpt = (i+1) % (self.FLAGS.save // self.FLAGS.batch)
-                args = [step_now, profile]
-                if not ckpt: _save_ckpt(self, *args)
+                if training:
+                    form = 'Epoch {} - step {} - loss {} - moving ave loss {}'
+                    self.say(form.format(self.meta['curr_epoch'], step_now, loss, loss_mva))
+                else:
+                    form = '{} Validation - epoch {} - step {} - loss {} - ave loss {}'
+                    self.say(form.format(i, self.meta['curr_epoch'], step_now, loss, val_loss))
+            
+                if training:
+                    profile += [(loss, loss_mva)]
+
+                    ckpt = (i+1) % (self.FLAGS.save // self.FLAGS.batch)
+                    args = [step_now, profile]
+                    if not ckpt: _save_ckpt(self, *args)
+                    break
 
     if ckpt: _save_ckpt(self, *args)
 

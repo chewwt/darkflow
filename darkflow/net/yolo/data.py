@@ -110,6 +110,7 @@ def shuffle(self, training = True):
     print('Dataset of {} instance(s)'.format(size))
     if batch > size: self.FLAGS.batch = batch = size
     batch_per_epoch = int(size / batch)
+    self.meta['batch_per_epoch'] = batch_per_epoch
     print("batch per epoch:", batch_per_epoch)
 
     for i in range(self.FLAGS.epoch):
