@@ -16,7 +16,8 @@ def parse(self, exclusive = False, training = True):
         ann = self.FLAGS.annotation
     else:
         ann = self.FLAGS.val_annotation
-    if not os.path.isfile(ann):
+    # if not os.path.isfile(ann):
+    if not os.path.isdir(ann):
         msg = 'Annotation file not found {} .'
         exit('Error: {}'.format(msg.format(ann)))
     print('\n{} parsing {}'.format(meta['model'], ann))
@@ -109,10 +110,14 @@ def shuffle(self, training = True):
 
     print('Dataset of {} instance(s)'.format(size))
     if batch > size: self.FLAGS.batch = batch = size
-    batch_per_epoch = int(size / batch)
-    self.meta['batch_per_epoch'] = batch_per_epoch
-    print("batch per epoch:", batch_per_epoch)
-
+    batch_per_epoch = int(size // batch)
+    if training:
+        self.meta['batch_per_epoch'] = batch_per_epoch
+        print("batch per epoch:", batch_per_epoch)
+    else:
+        self.meta['val_batch_per_epoch'] = batch_per_epoch
+        print("val batch per epoch:", batch_per_epoch)
+        
     for i in range(self.FLAGS.epoch):
         if training:
             self.meta['curr_epoch'] = i

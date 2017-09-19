@@ -3,6 +3,7 @@ parse BBox label tool annotations
 https://github.com/puzzledqs/BBox-Label-Tool
 """
 
+import csv
 import os
 import sys
 import xml.etree.ElementTree as ET
@@ -34,7 +35,7 @@ def bbox_label_tool(ANN, pick, exclusive = False):
         
         # actual parsing 
         with open(file, 'r') as f:
-            csvreader = csv.reader(f, delimiter=',')
+            csvreader = csv.reader(f, delimiter=' ')
             jpg = file.split('.')[0] + '.jpg'
             w = 640
             h = 480
@@ -47,21 +48,19 @@ def bbox_label_tool(ANN, pick, exclusive = False):
                     continue
 
                 current = list()
-                elms = row.split(' ')
-                name = elms[-1]
+                name = row[-1]
                 if name not in pick:
                         continue
 
-                xn = int(elms[0])
-                xx = int(elms[2])
-                yn = int(elms[1])
-                yx = int(elms[3])
+                xn = int(row[0])
+                xx = int(row[2])
+                yn = int(row[1])
+                yx = int(row[3])
                 current = [name,xn,yn,xx,yx]
                 all += [current]
 
         add = [[jpg, [w, h, all]]]
         dumps += add
-        in_file.close()
 
     # gather all stats
     stat = dict()
