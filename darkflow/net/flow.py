@@ -32,12 +32,12 @@ def _save_ckpt(self, step, loss_profile):
 def train(self):
     loss_ph = self.framework.placeholders
     loss_mva = None; profile = list()
+    val_loss_mva = None;
 
     batches = self.framework.shuffle()
     val_batches = self.framework.shuffle(training=False)
     loss_op = self.framework.loss
 
-    train = [True]
     # prev_epoch = None
 
     for i, (x_batch, datum) in enumerate(batches):
@@ -48,19 +48,39 @@ def train(self):
 
         step_now = self.FLAGS.load + i + 1
 
+        # TRAINING
+        feed_dict = {
+            loss_ph[key]: datum[key] 
+                for key in loss_ph }
+        feed_dict[self.inp] = x_batch
+        feed_dict.update(self.feed)
+
+        fetches = [self.train_op, loss_op, self.summary_op] 
+        fetched = self.sess.run(fetches, feed_dict)
+        loss = fetched[1]
+        summary = fetched[2]
+
+        if loss_mva is None: loss_mva = loss
+        loss_mva = .9 * loss_mva + .1 * loss
+
+        self.writer.add_summary(summary, step_now)
+
+        form = 'Epoch {} - step {} - loss {} - moving ave loss {}'
+        self.say(form.format(self.meta['curr_epoch'], step_now, loss, loss_mva))
+        
+        profile += [(loss, loss_mva)]
+        ckpt = (i+1) % (self.FLAGS.save // self.FLAGS.batch)
+        args = [step_now, profile]
+        if not ckpt: _save_ckpt(self, *args)
+
+        # VALIDATION
         # if prev_epoch is None or prev_epoch != self.meta['curr_epoch']:
-        if i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
-            train = [True, False]
-            # prev_epoch = self.meta['curr_epoch']
-        else:
-            train = [True]
+        if self.meta['curr_epoch'] != 0 and i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
+            val_loss = 0.0
 
-        for training in train:
-            val_loss = None
-
-            for j, (v_batch, v_datum) in enumerate(val_batches):
-                if not training:    # validation
-                    (x_batch, datum) = (v_batch, v_datum)
+            for j, (x_batch, datum) in enumerate(val_batches):
+                if j >= self.meta['val_batch_per_epoch']:
+                    break
 
                 feed_dict = {
                     loss_ph[key]: datum[key] 
@@ -68,42 +88,27 @@ def train(self):
                 feed_dict[self.inp] = x_batch
                 feed_dict.update(self.feed)
 
-                if training:
-                    fetches = [self.train_op, loss_op, self.summary_op] 
-                    fetched = self.sess.run(fetches, feed_dict)
-                    loss = fetched[1]
-                    summary = fetched[2]
-                    writer = self.writer
-                else:
-                    fetches = [loss_op, self.summary_op] 
-                    fetched = self.sess.run(fetches, feed_dict)
-                    loss = fetched[0]
-                    summary = fetched[1]
-                    writer = self.val_writer
+                fetches = [loss_op] 
+                fetched = self.sess.run(fetches, feed_dict)
+                loss = fetched[0]
+                val_loss += loss
+                
+                form = '{} Validation - epoch {} - step {} - batch loss {}'
+                self.say(form.format(j, self.meta['curr_epoch'], step_now, loss))
 
-                if training:
-                    if loss_mva is None: loss_mva = loss
-                    loss_mva = .9 * loss_mva + .1 * loss
-                else:
-                    if val_loss is None: val_loss = loss
-                    val_loss = val_loss * (i / float(i + 1)) + loss * (1 / float(i + 1))
+            val_loss /= float(self.meta['val_batch_per_epoch'])
+                   
+            if val_loss_mva is None: val_loss_mva = val_loss
+            val_loss_mva = .9 * val_loss_mva + .1 * val_loss
 
-                writer.add_summary(summary, step_now)
+            summary = tf.Summary(value=[
+                tf.Summary.Value(tag='{}_loss'.format(self.meta['model']), simple_value=val_loss), 
+            ])
 
-                if training:
-                    form = 'Epoch {} - step {} - loss {} - moving ave loss {}'
-                    self.say(form.format(self.meta['curr_epoch'], step_now, loss, loss_mva))
-                else:
-                    form = '{} Validation - epoch {} - step {} - loss {} - ave loss {}'
-                    self.say(form.format(i, self.meta['curr_epoch'], step_now, loss, val_loss))
-            
-                if training:
-                    profile += [(loss, loss_mva)]
+            self.val_writer.add_summary(summary, step_now)  
 
-                    ckpt = (i+1) % (self.FLAGS.save // self.FLAGS.batch)
-                    args = [step_now, profile]
-                    if not ckpt: _save_ckpt(self, *args)
-                    break
+            form = 'Validation - epoch {} - step {} - loss {} - ave loss {}'
+            self.say(form.format(self.meta['curr_epoch'], step_now, val_loss, val_loss_mva))
 
     if ckpt: _save_ckpt(self, *args)
 
