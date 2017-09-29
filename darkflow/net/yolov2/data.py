@@ -30,10 +30,12 @@ def _batch(self, chunk, training = True):
     else:
         path = os.path.join(self.FLAGS.val_dataset, jpg)
     try:
+        # img, timing = self.preprocess(path, allobj)
         img = self.preprocess(path, allobj)
     except Exception as e:
         print(path)
-        return None, None
+        print(e)
+        return None, None#, None
 
     # Calculate regression target
     cellx = 1. * w / W
@@ -43,7 +45,7 @@ def _batch(self, chunk, training = True):
         centery = .5*(obj[2]+obj[4]) #ymin, ymax
         cx = centerx / cellx
         cy = centery / celly
-        if cx >= W or cy >= H: return None, None
+        if cx >= W or cy >= H: return None, None#, None
         obj[3] = float(obj[3]-obj[1]) / w
         obj[4] = float(obj[4]-obj[2]) / h
         obj[3] = np.sqrt(obj[3])
@@ -90,5 +92,5 @@ def _batch(self, chunk, training = True):
         'botright': botright
     }
 
-    return inp_feed_val, loss_feed_val
+    return inp_feed_val, loss_feed_val#, timing
 

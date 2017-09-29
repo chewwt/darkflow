@@ -47,10 +47,10 @@ def loss(self, net_out):
     _upleft = tf.placeholder(tf.float32, size2 + [2])
     _botright = tf.placeholder(tf.float32, size2 + [2])
 
-    self.placeholders = {
+    self.placeholders.update({
         'probs':_probs, 'confs':_confs, 'coord':_coord, 'proid':_proid,
         'areas':_areas, 'upleft':_upleft, 'botright':_botright
-    }
+    })
 
     # Extract the coordinate prediction from net.out
     net_out_reshape = tf.reshape(net_out, [-1, H, W, B, (4 + 1 + C)])

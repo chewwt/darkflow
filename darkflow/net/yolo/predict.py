@@ -1,10 +1,12 @@
-from ...utils.im_transform import imcv2_recolor, imcv2_affine_trans
+from ...utils.im_transform import imcv2_recolor, imcv2_affine_trans, imtf_recolor
 from ...utils.box import BoundBox, box_iou, prob_compare
 import numpy as np
 import cv2
+import tensorflow as tf
 import os
 import json
 from ...cython_utils.cy_yolo_findboxes import yolo_box_constructor
+import time
 
 def _fix(obj, dims, scale, offs):
 	for i in range(1, 5):
@@ -14,11 +16,21 @@ def _fix(obj, dims, scale, offs):
 		obj[i] = max(min(obj[i], dim), 0)
 
 def resize_input(self, im):
+	# print('initial shape', im.shape, np.amax(im))
 	h, w, c = self.meta['inp_size']
 	imsz = cv2.resize(im, (w, h))
 	imsz = imsz / 255.
 	imsz = imsz[:,:,::-1]
+	# print('final shape', imsz.shape, np.amax(imsz))
 	return imsz
+
+# def resize_input(self, im):
+# 	# print('initial shape', im)
+# 	h, w, c = self.meta['inp_size']
+# 	imsz = tf.image.resize_images(im, (h, w))
+# 	imsz = tf.divide(imsz, 255.)
+# 	# print('final shape', imsz)
+# 	return imsz
 
 def process_box(self, b, h, w, threshold):
 	max_indx = np.argmax(b.probs)
@@ -55,27 +67,63 @@ def preprocess(self, im, allobj = None):
 	using scale, translation, flipping and recolor. The accompanied
 	parsed annotation (allobj) will also be modified accordingly.
 	"""
+	# start = time.time()
+
 	if type(im) is not np.ndarray:
+		# test = time.time()
 		im = cv2.imread(im)
+		# print("cv.imread", time.time() - test)
 
 	if allobj is not None: # in training mode
 		try:
+			# test = time.time()
 			result = imcv2_affine_trans(im)
+			# print("imcv2_affine_trans", time.time() - test)
 		except Exception as e:
 			raise
 		im, dims, trans_param = result
 		scale, offs, flip = trans_param
 		for obj in allobj:
+			# test = time.time()
 			_fix(obj, dims, scale, offs)
+			# print("fix", time.time() - test)
 			if not flip: continue
+			# test = time.time()
 			obj_1_ =  obj[1]
 			obj[1] = dims[0] - obj[3]
 			obj[3] = dims[0] - obj_1_
-		im = imcv2_recolor(im)
+			# print("flip", time.time() - test)
 
+		# test = time.time()
+		
+		im = imcv2_recolor(im)
+		# im = imtf_recolor(im)
+		
+		# # print("imcv2_recolor", time.time() - test)
+		# print("imtf_recolor", time.time() - test)
+
+	# test = time.time()
 	im = self.resize_input(im)
-	if allobj is None: return im
-	return im#, np.array(im) # for unit testing
+	# print("resize_input", time.time() - test)
+
+	# print("Preprocess timing", time.time() - start)
+	if allobj is None: return im#, time.time() - start
+	return im#, time.time() - start#, np.array(im) # for unit testing
+
+# img_in placeholder
+def preprocess_tf(self, img):
+	# start = time.time()
+	
+	# test = time.time()
+	im = imtf_recolor(img)
+	# print("imtf_recolor", time.time() - test)
+
+	# test = time.time()
+	im = self.resize_input(im)
+	# print("resize_input", time.time() - test)
+	# print("total preprocess", time.time() - start)
+
+	self.img_out = im
 
 def postprocess(self, net_out, im, save = True):
 	"""

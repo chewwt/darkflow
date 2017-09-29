@@ -32,21 +32,36 @@ def _save_ckpt(self, step, loss_profile):
 def train(self):
     loss_ph = self.framework.placeholders
     loss_mva = None; profile = list()
-    val_loss_mva = None;
-
     batches = self.framework.shuffle()
-    val_batches = self.framework.shuffle(training=False)
+
+    
+    if self.FLAGS.validation:
+        val_loss_mva = None;
+        val_batches = self.framework.shuffle(training=False)
+    
     loss_op = self.framework.loss
+    # preprocess_op = self.framework.img_out
 
     # prev_epoch = None
-
     for i, (x_batch, datum) in enumerate(batches):
+
+        start = time.time()
+
         if not i: self.say(train_stats.format(
             self.FLAGS.lr, self.FLAGS.batch,
             self.FLAGS.epoch, self.FLAGS.save
         ))
 
         step_now = self.FLAGS.load + i + 1
+        # test = time.time()
+        # # x_batch = self.sess.run(x_batch)
+        # batch = list()
+        # for img in x_batch:
+        #     img_process = self.sess.run(preprocess_op, {self.framework.img_placeholder: img})
+        #     batch += [np.expand_dims(img_process, 0)]
+
+        # x_batch = np.concatenate(batch, 0)
+        # print('recolor and resize a batch', time.time() - test)
 
         # TRAINING
         feed_dict = {
@@ -59,6 +74,7 @@ def train(self):
         fetched = self.sess.run(fetches, feed_dict)
         loss = fetched[1]
         summary = fetched[2]
+        print("feed dict and sess run", time.time() - start)
 
         if loss_mva is None: loss_mva = loss
         loss_mva = .9 * loss_mva + .1 * loss
@@ -75,7 +91,7 @@ def train(self):
 
         # VALIDATION
         # if prev_epoch is None or prev_epoch != self.meta['curr_epoch']:
-        if self.meta['curr_epoch'] != 0 and i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
+        if self.FLAGS.validation and self.meta['curr_epoch'] != 0 and i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
             val_loss = 0.0
 
             for j, (x_batch, datum) in enumerate(val_batches):

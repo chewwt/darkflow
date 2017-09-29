@@ -9,6 +9,7 @@ class argHandler(dict):
         self.define('imgdir', './sample_img/', 'path to testing directory with images')
         self.define('binary', './bin/', 'path to .weights directory')
         self.define('config', './cfg/', 'path to .cfg directory')
+        self.define('validation', True, 'whether there is validation evaluation')
         self.define('dataset', '../pascal/VOCdevkit/IMG/', 'path to dataset directory')
         self.define('val_dataset', '../pascal/VOCdevkit/IMG/', 'path to validation dataset directory')
         self.define('labels', 'labels.txt', 'path to labels file')
