@@ -47,9 +47,13 @@ def postprocess(self, net_out, im, save = True):
 			continue
 		left, right, top, bot, mess, max_indx, confidence = boxResults
 		thick = int((h + w) // 300)
+
+		resultsForJSON.append({"label": mess, "confidence": float('%.2f' % confidence), "topleft": {"x": left, "y": top}, "bottomright": {"x": right, "y": bot}})	
 		if self.FLAGS.json:
-			resultsForJSON.append({"label": mess, "confidence": float('%.2f' % confidence), "topleft": {"x": left, "y": top}, "bottomright": {"x": right, "y": bot}})
 			continue
+		# if self.FLAGS.json:
+		# 	resultsForJSON.append({"label": mess, "confidence": float('%.2f' % confidence), "topleft": {"x": left, "y": top}, "bottomright": {"x": right, "y": bot}})
+		# 	continue
 
 		cv2.rectangle(imgcv,
 			(left, top), (right, bot),
@@ -59,13 +63,20 @@ def postprocess(self, net_out, im, save = True):
 
 	if not save: return imgcv
 
-	outfolder = os.path.join(self.FLAGS.imgdir, 'out')
+	outfolder = os.path.join(self.FLAGS.imgdir, self.FLAGS.out)
 	img_name = os.path.join(outfolder, os.path.basename(im))
+	# if self.FLAGS.json:
+	# 	textJSON = json.dumps(resultsForJSON)
+	# 	textFile = os.path.splitext(img_name)[0] + ".json"
+	# 	with open(textFile, 'w') as f:
+	# 		f.write(textJSON)
+	# 	return
+	textJSON = json.dumps(resultsForJSON)
+	textFile = os.path.splitext(img_name)[0] + ".json"
+	with open(textFile, 'w') as f:
+		f.write(textJSON)
+
 	if self.FLAGS.json:
-		textJSON = json.dumps(resultsForJSON)
-		textFile = os.path.splitext(img_name)[0] + ".json"
-		with open(textFile, 'w') as f:
-			f.write(textJSON)
 		return
 
 	cv2.imwrite(img_name, imgcv)
