@@ -95,16 +95,16 @@ def preprocess(self, im, allobj = None):
 			# print("flip", time.time() - test)
 
 		# test = time.time()
-		
+		im = self.resize_input(im)
 		im = imcv2_recolor(im)
 		# im = imtf_recolor(im)
 		
 		# # print("imcv2_recolor", time.time() - test)
 		# print("imtf_recolor", time.time() - test)
-
-	# test = time.time()
-	im = self.resize_input(im)
-	# print("resize_input", time.time() - test)
+	else:
+		# test = time.time()
+		im = self.resize_input(im)
+		# print("resize_input", time.time() - test)
 
 	# print("Preprocess timing", time.time() - start)
 	if allobj is None: return im#, time.time() - start
