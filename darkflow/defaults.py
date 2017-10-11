@@ -7,6 +7,7 @@ class argHandler(dict):
     
     def setDefaults(self):
         self.define('imgdir', './sample_img/', 'path to testing directory with images')
+        self.define('out','out', 'folder in imgdir to store evaluated images')
         self.define('binary', './bin/', 'path to .weights directory')
         self.define('config', './cfg/', 'path to .cfg directory')
         self.define('validation', True, 'whether there is validation evaluation')
