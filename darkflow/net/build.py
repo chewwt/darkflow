@@ -141,9 +141,8 @@ class TFNet(object):
 		if self.FLAGS.summary is not None:
 			self.summary_op = tf.summary.merge_all()
 			self.writer = tf.summary.FileWriter(self.FLAGS.summary + 'train')
-	
-		if self.FLAGS.val_summary is not None:
-			self.val_writer = tf.summary.FileWriter(self.FLAGS.val_summary + 'val')
+			if self.FLAGS.validation:
+				self.val_writer = tf.summary.FileWriter(self.FLAGS.summary + 'val')
 			
 		self.sess = tf.Session(config = tf.ConfigProto(**cfg))
 		self.sess.run(tf.global_variables_initializer())

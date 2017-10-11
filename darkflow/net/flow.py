@@ -85,13 +85,16 @@ def train(self):
         self.say(form.format(self.meta['curr_epoch'], step_now, loss, loss_mva))
         
         profile += [(loss, loss_mva)]
-        ckpt = (i+1) % (self.FLAGS.save // self.FLAGS.batch)
+        # ckpt = (i+1) % (self.FLAGS.save // self.FLAGS.batch)
+        # ckpt = (i+1) % (self.FLAGS.save)
+        ckpt = (step_now) % (self.FLAGS.save)
         args = [step_now, profile]
         if not ckpt: _save_ckpt(self, *args)
 
         # VALIDATION
         # if prev_epoch is None or prev_epoch != self.meta['curr_epoch']:
-        if self.FLAGS.validation and self.meta['curr_epoch'] != 0 and i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
+        # if self.FLAGS.validation and self.meta['curr_epoch'] != 0 and i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
+        if self.FLAGS.validation and i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
             val_loss = 0.0
 
             for j, (x_batch, datum) in enumerate(val_batches):
