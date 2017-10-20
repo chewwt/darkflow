@@ -42,6 +42,8 @@ class argHandler(dict):
         self.define('saveVideo', False, 'Records video from input video or camera')
         self.define('pbLoad', '', 'path to .pb protobuf file (metaLoad must also be specified)')
         self.define('metaLoad', '', 'path to .meta file generated during --savepb that corresponds to .pb file')
+        self.define('freeze', 0, 'number of layers to freeze from the front. If negative, means freeze all except abs(number) from the back')
+        self.define('cutoff', 0, 'number of layers to transfer weights from the front. If negative, means transfer all layers except abs(number) from the back')
 
     def define(self, argName, default, description):
         self[argName] = default

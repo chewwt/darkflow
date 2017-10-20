@@ -7,6 +7,7 @@ class Layer(object):
         self._signature = list(args)
         self.type = list(args)[0]
         self.number = list(args)[1]
+        self.freeze = False
 
         self.w = dict() # weights
         self.h = dict() # placeholders
@@ -19,7 +20,7 @@ class Layer(object):
             size = np.prod(shp)
             self.wsize[var] = size
 
-    def load(self, src_loader):
+    def wload(self, src_loader):
         var_lay = src_loader.VAR_LAYER
         if self.type not in var_lay: return
 

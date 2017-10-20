@@ -37,8 +37,10 @@ class BaseOp(object):
         self.var = not self.gap > 0
         self.act = 'Load '
         self.convert(feed)
-        if self.var: self.train_msg = 'Yep! '
-        else: self.train_msg = 'Nope '
+        # if self.var: self.train_msg = 'Yep! '
+        # else: self.train_msg = 'Nope '
+        if self.lay.freeze: self.train_msg = 'Nope '
+        else: self.train_msg = 'Yep! '
         self.forward()
 
     def convert(self, feed):
@@ -51,27 +53,35 @@ class BaseOp(object):
     def wrap_variable(self, var):
         """wrap layer.w into variables"""
         val = self.lay.w.get(var, None)
-        if val is None:
-            shape = self.lay.wshape[var]
-            args = [0., 1e-2, shape]
-            if 'moving_mean' in var:
-                val = np.zeros(shape)
-            elif 'moving_variance' in var:
-                val = np.ones(shape)
-            else:
-                val = np.random.normal(*args)
-            self.lay.w[var] = val.astype(np.float32)
-            self.act = 'Init '
+        # if val is None:
+        #     shape = self.lay.wshape[var]
+        #     args = [0., 1e-2, shape]
+        #     if 'moving_mean' in var:
+        #         val = np.zeros(shape)
+        #     elif 'moving_variance' in var:
+        #         val = np.ones(shape)
+        #     else:
+        #         val = np.random.normal(*args)
+                
+        #     self.lay.w[var] = val.astype(np.float32)
+        #     self.act = 'Init '
         if not self.var: return
 
-        val = self.lay.w[var]
-        self.lay.w[var] = tf.constant_initializer(val)
+        if val is not None:
+            val = self.lay.w[var]
+            self.lay.w[var] = tf.constant_initializer(val)
+        else:
+            self.lay.w[var] = tf.contrib.layers.variance_scaling_initializer(
+                factor=2.0, mode="FAN_IN", uniform=False)
+            self.act = 'Init '
+
         if var in self._SLIM: return
         with tf.variable_scope(self.scope):
             self.lay.w[var] = tf.get_variable(var,
                 shape = self.lay.wshape[var],
                 dtype = tf.float32,
-                initializer = self.lay.w[var])
+                initializer = self.lay.w[var],
+                trainable = not self.lay.freeze)
 
     def wrap_pholder(self, ph, feed):
         """wrap layer.h into placeholders"""
