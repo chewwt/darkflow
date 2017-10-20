@@ -73,6 +73,12 @@ def get_ground_truth(ann_csv, files):
                         truth[name].update({row[2]: [list(map(int, [xmin, xmax, ymin, ymax]))]})
                 else:
                     truth[name] = {row[2]: [list(map(int, [xmin, xmax, ymin, ymax]))]}
+            
+            elif cmp(name, files[index]) > 0:
+                while cmp(name, files[index]) > 0:
+                    index += 1
+                continue
+
 
     return truth
 
@@ -87,47 +93,47 @@ def get_recall(truth, det, overlap_thres):
 
     for img in det:
         for obj_n in det[img]:
-            if obj_n in truth[img]:
-                taken = set()
-                for bb_det in det[img][obj_n]:
-                    found = False
-                    for i,bb_truth in enumerate(truth[img][obj_n]):
-                        if i in taken:
-                            # print(img, obj_n, taken)
-                            continue
+            if img in truth:
+                if obj_n in truth[img]:
+                    taken = set()
+                    for bb_det in det[img][obj_n]:
+                        found = False
+                        for i,bb_truth in enumerate(truth[img][obj_n]):
+                            if i in taken:
+                                # print(img, obj_n, taken)
+                                continue
 
-                        # bb_truth = truth[img][obj]
-                        # bb_det = det[img][obj]
+                            # bb_truth = truth[img][obj]
+                            # bb_det = det[img][obj]
 
-                        # compute overlap
-                        # intersection
-                        ixmin = np.maximum(bb_truth[0], bb_det[0])
-                        ixmax = np.minimum(bb_truth[1], bb_det[1])
-                        iymin = np.maximum(bb_truth[2], bb_det[2])
-                        iymax = np.maximum(bb_truth[3], bb_det[3])
-                        iw = np.maximum(ixmax - ixmin + 1., 0.)
-                        ih = np.maximum(iymax - iymin + 1., 0.)
-                        inter = iw * ih
+                            # compute overlap
+                            # intersection
+                            ixmin = np.maximum(bb_truth[0], bb_det[0])
+                            ixmax = np.minimum(bb_truth[1], bb_det[1])
+                            iymin = np.maximum(bb_truth[2], bb_det[2])
+                            iymax = np.maximum(bb_truth[3], bb_det[3])
+                            iw = np.maximum(ixmax - ixmin + 1., 0.)
+                            ih = np.maximum(iymax - iymin + 1., 0.)
+                            inter = iw * ih
 
-                        # union
-                        union = ((bb_det[1] - bb_det[0] + 1.) * (bb_det[3] - bb_det[2] + 1.) +
-                           (bb_truth[1] - bb_truth[0] + 1.) *
-                           (bb_truth[3] - bb_truth[2] + 1.) - inter)
+                            # union
+                            union = ((bb_det[1] - bb_det[0] + 1.) * (bb_det[3] - bb_det[2] + 1.) +
+                               (bb_truth[1] - bb_truth[0] + 1.) *
+                               (bb_truth[3] - bb_truth[2] + 1.) - inter)
 
-                        overlap = inter / union
-                        if overlap > overlap_thres:
-                            tp[img] += 1
-                            found = True
-                            taken.add(i)
-                            # print(img, obj_n)
-                            break
-                    if not found:
-                        fp[img] += 1
-            else:
-                fp[img] += len(det[img][obj_n])
+                            overlap = inter / union
+                            if overlap > overlap_thres:
+                                tp[img] += 1
+                                found = True
+                                taken.add(i)
+                                # print(img, obj_n)
+                                break
+                        if not found:
+                            fp[img] += 1
+                else:
+                    fp[img] += len(det[img][obj_n])
 
     for img in truth:
-        # print(img)
         for obj_n in truth[img]:
             # print(img, obj_n, truth[img][obj_n])
             objs[img] += len(truth[img][obj_n])
@@ -158,11 +164,13 @@ def cmp(x, y):
 
 def main(ann_csv, out_path, overlap_thres, confidence_thres):
     files, det = get_images_detection(out_path, confidence_thres)
+    if len(files) == 0:
+        print('no files found')
+        return
     truth = get_ground_truth(ann_csv, files)
     recall, precision = get_recall(truth, det, overlap_thres)
     print('Recall:', recall, '   Precision:', precision)
     # print(len(files))
-    # pp(truth)
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
