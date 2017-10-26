@@ -45,7 +45,10 @@ class BaseOp(object):
 
     def convert(self, feed):
         """convert self.lay to variables & placeholders"""
+        # print('======')
+        # print(self.lay.h)
         for var in self.lay.wshape:
+            # print(var)
             self.wrap_variable(var)
         for ph in self.lay.h:
             self.wrap_pholder(ph, feed)
@@ -53,28 +56,32 @@ class BaseOp(object):
     def wrap_variable(self, var):
         """wrap layer.w into variables"""
         val = self.lay.w.get(var, None)
-        # if val is None:
-        #     shape = self.lay.wshape[var]
-        #     args = [0., 1e-2, shape]
-        #     if 'moving_mean' in var:
-        #         val = np.zeros(shape)
-        #     elif 'moving_variance' in var:
-        #         val = np.ones(shape)
-        #     else:
-        #         val = np.random.normal(*args)
-                
-        #     self.lay.w[var] = val.astype(np.float32)
-        #     self.act = 'Init '
-        if not self.var: return
+        if val is None:
+            shape = self.lay.wshape[var]
+            args = [0., 1e-2, shape]
+            if 'moving_mean' in var:
+                val = np.zeros(shape).astype(np.float32)
+                self.lay.w[var] = tf.constant_initializer(val)
+            elif 'moving_variance' in var or 'gamma' in var:
+                val = np.ones(shape).astype(np.float32)
+                self.lay.w[var] = tf.constant_initializer(val)
+            elif 'kernel' in var:
+                self.lay.w[var] = tf.contrib.layers.variance_scaling_initializer(
+                factor=2.0, mode="FAN_IN", uniform=False)
+            elif 'biases' in var:
+                val = 0.1 * np.ones(shape).astype(np.float32)
+                self.lay.w[var] = tf.constant_initializer(val)
+            else:
+                print('help', var)
+                return
 
-        if val is not None:
+            self.act = 'Init '
+        else:
             val = self.lay.w[var]
             self.lay.w[var] = tf.constant_initializer(val)
-        else:
-            self.lay.w[var] = tf.contrib.layers.variance_scaling_initializer(
-                factor=2.0, mode="FAN_IN", uniform=False)
-            self.act = 'Init '
 
+        if not self.var: return
+        
         if var in self._SLIM: return
         with tf.variable_scope(self.scope):
             self.lay.w[var] = tf.get_variable(var,
