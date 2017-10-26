@@ -1,5 +1,5 @@
 from ...utils.pascal_voc_clean_xml import pascal_voc_clean_xml
-# from ...utils.open_images_csv import open_images_csv
+from ...utils.open_images_csv import open_images_csv
 # from ...utils.bbox_label_tool import bbox_label_tool
 from numpy.random import permutation as perm
 from .predict import preprocess
@@ -9,6 +9,7 @@ import pickle
 import numpy as np
 import tensorflow as tf
 import os 
+import sys
 
 def parse(self, exclusive = False, training = True):
     meta = self.meta
@@ -17,13 +18,13 @@ def parse(self, exclusive = False, training = True):
         ann = self.FLAGS.annotation
     else:
         ann = self.FLAGS.val_annotation
-    # if not os.path.isfile(ann):
-    if not os.path.isdir(ann):
+    if not os.path.isfile(ann):
+    # if not os.path.isdir(ann):
         msg = 'Annotation file not found {} .'
         exit('Error: {}'.format(msg.format(ann)))
     print('\n{} parsing {}'.format(meta['model'], ann))
-    dumps = pascal_voc_clean_xml(ann, meta['labels'], exclusive)
-    # dumps = open_images_csv(ann, meta['labels'], exclusive)
+    # dumps = pascal_voc_clean_xml(ann, meta['labels'], exclusive)
+    dumps = open_images_csv(ann, meta['labels'], exclusive)
     # dumps = bbox_label_tool(ann, meta['labels'], exclusive)
     return dumps
 
@@ -121,8 +122,12 @@ def shuffle(self, training = True):
         print("val batch per epoch:", batch_per_epoch)
 
     # total_time = 0
+    if training:
+        num = self.FLAGS.epoch
+    else:
+        num = sys.maxsize
         
-    for i in range(self.FLAGS.epoch):
+    for i in range(num):
         if training:
             self.meta['curr_epoch'] = i
             print("EPOCH:", self.meta['curr_epoch'])

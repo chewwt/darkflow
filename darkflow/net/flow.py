@@ -98,9 +98,7 @@ def train(self):
             val_loss = 0.0
 
             for j, (x_batch, datum) in enumerate(val_batches):
-                if j >= self.meta['val_batch_per_epoch']:
-                    break
-
+        
                 feed_dict = {
                     loss_ph[key]: datum[key] 
                         for key in loss_ph }
@@ -114,6 +112,9 @@ def train(self):
                 
                 form = '{} Validation - epoch {} - step {} - batch loss {}'
                 self.say(form.format(j, self.meta['curr_epoch'], step_now, loss))
+
+                if j+1 == self.meta['val_batch_per_epoch']:
+                    break
 
             val_loss /= float(self.meta['val_batch_per_epoch'])
                    
