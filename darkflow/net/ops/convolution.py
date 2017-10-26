@@ -77,10 +77,12 @@ class convolutional(BaseOp):
                 # tf.summary.histogram('W_bnorm', temp)
             
             self.out = tf.nn.bias_add(temp, self.lay.w['biases'])
-            tf.summary.histogram('W_out', self.out)
-            tf.summary.histogram('W', self.lay.w['kernel'])            
+            if not self.lay.freeze:
+                # tf.summary.histogram('Wout', self.out)
+                tf.summary.histogram('b', self.lay.w['biases'])
+                tf.summary.histogram('W', self.lay.w['kernel'])            
             
-
+ 
     def batchnorm(self, layer, inp):
         if not self.var:
             temp = (inp - layer.w['moving_mean'])
@@ -93,8 +95,10 @@ class convolutional(BaseOp):
                 'epsilon': 1e-5, 'scope' : self.scope,
                 'updates_collections' : None,
                 'is_training': layer.h['is_training'],
-                'param_initializers': layer.w
+                'param_initializers': layer.w,
+                'trainable': not layer.freeze
                 })
+            # print(str(layer.number), 'bn', str(args['trainable']))
             return slim.batch_norm(inp, **args)
 
     def speak(self):
