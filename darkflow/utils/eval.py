@@ -38,48 +38,52 @@ def get_images_detection(out_path, confidence_thres):
 
 # ann_csv row: [0]img [2]class [3]xmin [4]xmax [5]ymin [6]ymax
 # return dict[img][obj][bbox1, bbox2, ...]
-def get_ground_truth(ann_csv, files):
-    files = sorted(files, key=functools.cmp_to_key(cmp))
-    index = 0
-    previous = None
+def get_ground_truth(ann, files):
+    # files = sorted(files, key=functools.cmp_to_key(cmp))
+    # print(files)
     truth = {}
 
-    with open(ann_csv, 'r') as f:
-        csvreader = csv.reader(f, delimiter=',')
-        for row in csvreader:
-            name = row[0].split('.')[0]
-            if previous is not None and name != previous:
-                index += 1
-                previous = None
+    if ann[-1] != '/': ann += '/'
+    annotations = glob.glob(str(ann)+'*.txt')
 
-            if index == len(files):
-                break
+    for a in annotations:
+        with open(a, 'r') as f:
+            csvreader = csv.reader(f, delimiter=' ')
+            obj = {}
+            name = (a.split('/')[-1]).split('.')[0]
+            # print(name)
+            head = True
+            for row in csvreader:
 
-            if name == files[index]:
-                previous = name
+                if head:
+                    head = False
+                    continue
+                
+                xmin = int(row[0])
+                xmax = int(row[2])
+                ymin = int(row[1])
+                ymax = int(row[3])
 
-                w = row[7]
-                h = row[8]
-
-                xmin = int(float(row[3]) * float(w))
-                xmax = int(float(row[4]) * float(w))
-                ymin = int(float(row[5]) * float(h))
-                ymax = int(float(row[6]) * float(h))
-
-                if name in truth:
-                    if row[2] in truth[name]:
-                        truth[name][row[2]].append(list(map(int, [xmin, xmax, ymin, ymax])))
-                    else:
-                        truth[name].update({row[2]: [list(map(int, [xmin, xmax, ymin, ymax]))]})
+                if row[4] in obj:
+                    obj[row[4]]. append([xmin, xmax, ymin, ymax])
                 else:
-                    truth[name] = {row[2]: [list(map(int, [xmin, xmax, ymin, ymax]))]}
-            
-            elif cmp(name, files[index]) > 0:
-                while cmp(name, files[index]) > 0:
-                    index += 1
-                continue
+                    obj.update({row[4]: [[xmin, xmax, ymin, ymax]]})
 
+                #     if name in truth:
+                #         if row[2] in truth[name]:
+                #             truth[name][row[2]].append(list(map(int, [xmin, xmax, ymin, ymax])))
+                #         else:
+                #             truth[name].update({row[2]: [list(map(int, [xmin, xmax, ymin, ymax]))]})
+                #     else:
+                #         truth[name] = {row[2]: [list(map(int, [xmin, xmax, ymin, ymax]))]}
+                
+                # elif cmp(name, files[index]) > 0:
+                #     while cmp(name, files[index]) > 0:
+                #         index += 1
+                #     continue
+            truth[name] = obj
 
+    # pp(truth)
     return truth
 
 def get_recall(truth, det, overlap_thres):
@@ -157,28 +161,30 @@ def pp(truth):
             print("    ", obj, truth[k][obj])
 
 def cmp(x, y):
-    num_x = int(x, 16) + 0x200
-    num_y = int(y, 16) + 0x200
+    # num_x = int(x, 16) + 0x200
+    # num_y = int(y, 16) + 0x200
+    num_x = int(x[9:])
+    num_y = int(y[9:])
 
     return num_x - num_y
 
-def main(ann_csv, out_path, overlap_thres, confidence_thres):
+def main(ann, out_path, overlap_thres, confidence_thres):
     files, det = get_images_detection(out_path, confidence_thres)
     if len(files) == 0:
         print('no files found')
         return
-    truth = get_ground_truth(ann_csv, files)
+    truth = get_ground_truth(ann, files)
     recall, precision = get_recall(truth, det, overlap_thres)
     print('Recall:', recall, '   Precision:', precision)
     # print(len(files))
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('ann_csv', help='ground truth annotation')
+    p.add_argument('ann', help='ground truth annotation')
     p.add_argument('out_path', help='detection results folder')
     p.add_argument('--overlap_thres', '-ot', type=int, default=0.5)
     p.add_argument('--confidence_thres', '-ct', type=float, default=0.03)
 
     args = p.parse_args()
 
-    main(args.ann_csv, args.out_path, args.overlap_thres, args.confidence_thres)
+    main(args.ann, args.out_path, args.overlap_thres, args.confidence_thres)
