@@ -52,17 +52,18 @@ def _batch(self, chunk, training = True):
         obj[4] = np.sqrt(obj[4])
         obj[1] = cx - np.floor(cx) # centerx
         obj[2] = cy - np.floor(cy) # centery
-        obj += [int(np.floor(cy) * W + np.floor(cx))]
+        obj += [int(np.floor(cy) * W + np.floor(cx))] # number in row major order
 
     # show(im, allobj, S, w, h, cellx, celly) # unit test
 
     # Calculate placeholders' values
-    probs = np.zeros([H*W,B,C])
-    confs = np.zeros([H*W,B])
-    coord = np.zeros([H*W,B,4])
-    proid = np.zeros([H*W,B,C])
-    prear = np.zeros([H*W,4])
+    probs = np.zeros([H*W,B,C]) # guess object
+    confs = np.zeros([H*W,B]) # guess objectness, cos line 91 in train.py
+    coord = np.zeros([H*W,B,4]) # guess coordinates
+    proid = np.zeros([H*W,B,C]) # guess objectness??
+    prear = np.zeros([H*W,4]) # guess box shape at a point
     for obj in allobj:
+        # will this override if 2 objs have same index?
         probs[obj[5], :, :] = [[0.]*C] * B
         probs[obj[5], :, labels.index(obj[0])] = 1.
         proid[obj[5], :, :] = [[1.]*C] * B
