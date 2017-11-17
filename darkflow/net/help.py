@@ -14,11 +14,47 @@ old_graph_msg = 'Resolving old graph def {} (no guarantee)'
 def build_train_op(self):
     # self.framework.img_placeholder = tf.placeholder(tf.float32, shape=[None, None, 3])
     # self.framework.preprocess_tf(self.framework.img_placeholder)
+    self.framework.check_op = []
+    self.framework.print_op = []
     self.framework.loss(self.out)
     self.say('Building {} train op'.format(self.meta['model']))
     optimizer = self._TRAINER[self.FLAGS.trainer](self.FLAGS.lr)
     gradients = optimizer.compute_gradients(self.framework.loss)
+    # print(gradients, type(gradients))
+    # self.points_print = []
+
+    """
+    for i,grad in enumerate(gradients):
+        # if "Bias" in grad[0].name:
+        #     gradi = grad[0][3:-1:14]
+        # else:
+        #     gradi = grad[0][:,:,:,3:-1:14]
+        # # gradi = grad[0]
+        # grad_min = tf.reduce_min(gradi)
+        # self.points_print.append(tf.Print(grad_min, [grad_min, '/'.join((grad[0].name).split('/')[0:3])], message='grad min', summarize=100))
+        # grad_argmin = tf.where(tf.equal(gradi, grad_min))
+        # self.points_print.append(tf.Print(grad_argmin, [grad_argmin, tf.shape(grad_argmin), '/'.join((grad[0].name).split('/')[0:3])], message='grad argmin', summarize=100))
+        
+        # grad_max = tf.reduce_max(gradi)
+        # self.points_print.append(tf.Print(grad_max, [grad_max, '/'.join((grad[0].name).split('/')[0:3])], message='grad max', summarize=100))
+        # grad_argmax = tf.where(tf.equal(gradi, grad_max))
+        # self.points_print.append(tf.Print(grad_argmax, [grad_argmax, tf.shape(grad_argmax), '/'.join((grad[0].name).split('/')[0:3])], message='grad argmax', summarize=100))
+        
+        # tf.summary.scalar('{} min'.format('/'.join((grad[0].name).split('/')[0:3])), grad_min)
+        # tf.summary.scalar('{} max'.format('/'.join((grad[0].name).split('/')[0:3])), grad_max)
+
+        nans = tf.is_nan(grad[0])
+        points = tf.where(nans)
+        
+        self.points_print.append(tf.Print(points, [points, tf.shape(points), '/'.join((grad[0].name).split('/')[0:3])], message="points that are nan in the gradient: ", summarize=100))
+        # self.framework.check_op.append(tf.check_numerics(grad[0], '/'.join((grad[0].name).split('/')[0:3])))
+        # print(points_print, points)
+        # with tf.name_scope('Gradients' + '/'.join((grad[0].name).split('/')[1:3])):
+            # tf.summary.histogram('gradients', grad[0])
+    """
+
     self.train_op = optimizer.apply_gradients(gradients)
+    # self.check_op = tf.add_check_numerics_ops()
 
 def load_from_ckpt(self):
     if self.FLAGS.load < 0: # load lastest ckpt

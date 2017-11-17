@@ -77,10 +77,10 @@ class convolutional(BaseOp):
                 # tf.summary.histogram('W_bnorm', temp)
             
             self.out = tf.nn.bias_add(temp, self.lay.w['biases'])
-            if not self.lay.freeze:
-                # tf.summary.histogram('Wout', self.out)
-                tf.summary.histogram('b', self.lay.w['biases'])
-                tf.summary.histogram('W', self.lay.w['kernel'])            
+            # if not self.lay.freeze:
+            #     # tf.summary.histogram('Wout', self.out)
+            #     tf.summary.histogram('b', self.lay.w['biases'])
+            #     tf.summary.histogram('W', self.lay.w['kernel'])            
             
  
     def batchnorm(self, layer, inp):

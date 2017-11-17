@@ -70,14 +70,20 @@ def train(self):
         feed_dict[self.inp] = x_batch
         feed_dict.update(self.feed)
 
-        fetches = [self.train_op, loss_op, self.summary_op] 
+        # fetches = [self.train_op, loss_op, self.summary_op, self.points_print, self.framework.print_op, self.framework.check_op] 
+        fetches = [self.train_op, loss_op, self.framework.print_op, self.framework.check_op] 
+        
         fetched = self.sess.run(fetches, feed_dict)
         loss = fetched[1]
-        summary = fetched[2]
+        # summary = fetched[2]
         print("feed dict and sess run", time.time() - start)
-
+        
         if loss_mva is None: loss_mva = loss
         loss_mva = .9 * loss_mva + .1 * loss
+
+        summary = tf.Summary(value=[
+            tf.Summary.Value(tag='{}_loss'.format(self.meta['model']), simple_value=loss_mva), 
+        ])
 
         self.writer.add_summary(summary, step_now)
 
@@ -103,7 +109,7 @@ def train(self):
                     loss_ph[key]: datum[key] 
                         for key in loss_ph }
                 feed_dict[self.inp] = x_batch
-                feed_dict.update(self.feed)
+                # feed_dict.update(self.feed)
 
                 fetches = [loss_op] 
                 fetched = self.sess.run(fetches, feed_dict)
