@@ -6,9 +6,9 @@ import json
 import argparse
 import os
 import glob
-import functools
-from collections import defaultdict
 import matplotlib.pyplot as plt
+
+from open_images_csv import open_images_csv_gt
 
 # return full path of files and file index.
 def get_files(out_path):
@@ -59,52 +59,9 @@ def get_images_detection(files, image_ids):
 #         }
 #     }
 # }
-def get_ground_truth(ann_csv, files):
-    files = sorted(files, key=functools.cmp_to_key(cmp))
-    index = 0
-    previous = None
-    # truth = {}
-    truth = defaultdict(dict)
-
-    with open(ann_csv, 'r') as f:
-        csvreader = csv.reader(f, delimiter=',')
-        for row in csvreader:
-            name = row[0].split('.')[0]
-            if previous is not None and name != previous:
-                index += 1
-                previous = None
-
-            if index == len(files):
-                break
-
-            if name == files[index]:
-                previous = name
-
-                w = row[7]
-                h = row[8]
-
-                xmin = int(float(row[3]) * float(w))
-                xmax = int(float(row[4]) * float(w))
-                ymin = int(float(row[5]) * float(h))
-                ymax = int(float(row[6]) * float(h))
-
-                if name in truth and row[2] in truth[name]:
-                    # truth[name][row[2]] = np.vstack((truth[name][row[2]], np.array([[xmin, xmax, ymin, ymax], 0])))
-                    truth[name][row[2]]['bboxs'] = np.vstack((truth[name][row[2]]['bboxs'], np.array([xmin, xmax, ymin, ymax])))
-                    truth[name][row[2]]['is_dets'] = np.append(truth[name][row[2]]['is_dets'], 0)
-                    # else:
-                    #     truth[name].update({row[2]: np.expand_dims(np.array([[xmin, xmax, ymin, ymax], 0], dtype=int), axis=0)})
-                else:
-                    truth[name].update({row[2]: {'bboxs': np.array([[xmin, xmax, ymin, ymax]], dtype=int), \
-                                           'is_dets': np.array([0])}})
-               
-            elif cmp(name, files[index]) > 0:
-                while cmp(name, files[index]) > 0:
-                    index += 1
-                continue
-
-
-    return truth
+def get_ground_truth(ann, image_ids):
+    return open_images_csv_gt(ann, image_ids)
+    
 
 # returns a np array [recall, precision]
 def get_recall_precision(truth, det, gt_obj_num, overlap_thres, confidence_thres, verbose=False):
@@ -249,7 +206,7 @@ def get_map(truth, det, classes, gt_obj_num, overlap_thres, verbose=True):
                 bb_det = bbs_det[i]
                 bb_truth = truth[ids[i]][c]['bboxs']
                 isDetected = truth[ids[i]][c]['is_dets']     # check if gt object has been detected
-                # print(bb_truth, bb_det)
+                
                 #TODO refactor this
                 # compute overlaps
                 # intersection
@@ -261,19 +218,15 @@ def get_map(truth, det, classes, gt_obj_num, overlap_thres, verbose=True):
                 iw = np.maximum(ixmax - ixmin + 1., 0.)
                 ih = np.maximum(iymax - iymin + 1., 0.)
                 inters = iw * ih
-                # print(ixmin, iymin, ixmax, iymax, iw, ih, inters)
-
+               
                 # union
                 uni = ((bb_det[1] - bb_det[0] + 1.) * (bb_det[3] - bb_det[2] + 1.) +
                        (bb_truth[:, 1] - bb_truth[:, 0] + 1.) *
                        (bb_truth[:, 3] - bb_truth[:, 2] + 1.) - inters)
 
                 overlaps = inters / uni
-                # print(overlaps)
                 overlaps *= (isDetected ^ 1)     # overlap becomes 0 if gt object has been detected
-                # print(len(overlaps), len(isDetected))
-                # print(overlaps)
-
+                
                 ovmax = np.max(overlaps)
                 max_ind = np.argmax(overlaps)
 
@@ -330,15 +283,9 @@ def pp(truth):
         for obj in truth[k]:
             print("    ", obj, truth[k][obj])
 
-def cmp(x, y):
-    num_x = int(x, 16) + 0x200
-    num_y = int(y, 16) + 0x200
-
-    return num_x - num_y
-
 # return np array of results
 # if files not found, IOError raised
-def evaluate(ann_csv, path, classes, overlap_thres, cal_recall, confidence_thres, isVerbose):
+def evaluate(ann, path, classes, overlap_thres, cal_recall, confidence_thres, isVerbose):
     print(path)
     try:
         files, image_ids = get_files(path)
@@ -349,7 +296,7 @@ def evaluate(ann_csv, path, classes, overlap_thres, cal_recall, confidence_thres
     if len(files) == 0:
         raise IOError('no files found in', path)
 
-    truth = get_ground_truth(ann_csv, image_ids)
+    truth = get_ground_truth(ann, image_ids)
     # print(truth)
 
     if cal_recall:
@@ -363,7 +310,7 @@ def evaluate(ann_csv, path, classes, overlap_thres, cal_recall, confidence_thres
     # get_map
     # print(len(files))
 
-def main(ann_csv, out_path, label, overlap_thres, recall, confidence_thres, isVerbose, csv_file):
+def main(ann, out_path, label, overlap_thres, recall, confidence_thres, isVerbose, csv_file):
     classes = get_classes(label)
 
     if not os.path.isdir(out_path):
@@ -381,7 +328,7 @@ def main(ann_csv, out_path, label, overlap_thres, recall, confidence_thres, isVe
 
     for path in paths:
         try:
-            results = evaluate(ann_csv, path, classes, overlap_thres, recall, confidence_thres, isVerbose)
+            results = evaluate(ann, path, classes, overlap_thres, recall, confidence_thres, isVerbose)
             if csv_file is not None:
                 f_name = path.split('/')[-1]
                 writer.writerow(np.append(f_name, results))
@@ -390,11 +337,12 @@ def main(ann_csv, out_path, label, overlap_thres, recall, confidence_thres, isVe
             print(err, err.__cause__)
             continue 
 
-    file.close()
+    if csv_file is not None:
+        file.close()
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('ann_csv', help='ground truth annotation')
+    p.add_argument('ann', help='ground truth annotation')
     p.add_argument('out_path', help='detection results folder. Can contain wildcards i.e out_\*')
     p.add_argument('--label', type=str, default='labels.txt', 
                     help='class labels (not necessary if only calculate recall')
@@ -407,4 +355,4 @@ if __name__ == '__main__':
                     help='csv file to save to')
     
     args = p.parse_args()
-    main(args.ann_csv, args.out_path, args.label, args.overlap_thres, args.recall, args.confidence_thres, args.verbose, args.csv)
+    main(args.ann, args.out_path, args.label, args.overlap_thres, args.recall, args.confidence_thres, args.verbose, args.csv)
