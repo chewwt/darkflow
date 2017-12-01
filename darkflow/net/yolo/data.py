@@ -123,13 +123,14 @@ def shuffle(self, training = True):
 
     # total_time = 0
     if training:
+        # maybe change to training self.FLAGS.epoch in total rather than add on?
         num = self.FLAGS.epoch
     else:
         num = sys.maxsize
         
     for i in range(num):
         if training:
-            self.meta['curr_epoch'] = i
+            self.meta['curr_epoch'] = int(self.meta['step_now'] // self.meta['batch_per_epoch'])
             print("EPOCH:", self.meta['curr_epoch'])
         shuffle_idx = perm(np.arange(size))
         for b in range(batch_per_epoch):

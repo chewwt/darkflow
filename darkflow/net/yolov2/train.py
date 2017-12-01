@@ -133,15 +133,15 @@ def loss(self, net_out):
     # wght_argmin = tf.where(tf.equal(wght[:,:,:,4], wght_min))
     # self.print_op.append(tf.Print(wght_argmin, [wght_argmin, tf.shape(wght_argmin)], message='wght argmin', summarize=100))
     
-    adjusted_net_out_min = tf.reduce_min(adjusted_net_out[:,:,:,2:4])
-    self.print_op.append(tf.Print(adjusted_net_out_min, [adjusted_net_out_min], message='adjusted_net_out min', summarize=100))
-    adjusted_net_out_argmin = tf.where(tf.equal(adjusted_net_out[:,:,:,2:4], adjusted_net_out_min))
-    self.print_op.append(tf.Print(adjusted_net_out_argmin, [adjusted_net_out_argmin, tf.shape(adjusted_net_out_argmin)], message='adjusted_net_out argmin', summarize=100))
+    # adjusted_net_out_min = tf.reduce_min(adjusted_net_out[:,:,:,2:4])
+    # self.print_op.append(tf.Print(adjusted_net_out_min, [adjusted_net_out_min], message='adjusted_net_out min', summarize=100))
+    # adjusted_net_out_argmin = tf.where(tf.equal(adjusted_net_out[:,:,:,2:4], adjusted_net_out_min))
+    # self.print_op.append(tf.Print(adjusted_net_out_argmin, [adjusted_net_out_argmin, tf.shape(adjusted_net_out_argmin)], message='adjusted_net_out argmin', summarize=100))
     
-    adjusted_net_out_max = tf.reduce_max(adjusted_net_out[:,:,:,2:4])
-    self.print_op.append(tf.Print(adjusted_net_out_max, [adjusted_net_out_max], message='adjusted_net_out max', summarize=100))
-    adjusted_net_out_argmax = tf.where(tf.equal(adjusted_net_out[:,:,:,2:4], adjusted_net_out_max))
-    self.print_op.append(tf.Print(adjusted_net_out_argmax, [adjusted_net_out_argmax, tf.shape(adjusted_net_out_argmax)], message='adjusted_net_out argmax', summarize=100))
+    # adjusted_net_out_max = tf.reduce_max(adjusted_net_out[:,:,:,2:4])
+    # self.print_op.append(tf.Print(adjusted_net_out_max, [adjusted_net_out_max], message='adjusted_net_out max', summarize=100))
+    # adjusted_net_out_argmax = tf.where(tf.equal(adjusted_net_out[:,:,:,2:4], adjusted_net_out_max))
+    # self.print_op.append(tf.Print(adjusted_net_out_argmax, [adjusted_net_out_argmax, tf.shape(adjusted_net_out_argmax)], message='adjusted_net_out argmax', summarize=100))
 
     ####
 
@@ -160,9 +160,9 @@ def loss(self, net_out):
     # loss_argmax = tf.where(tf.equal(loss[:,:,:,4], loss_max))
     # self.print_op.append(tf.Print(loss_argmax, [loss_argmax, tf.shape(loss_argmax)], message='loss argmax', summarize=100))
     
-    nans = tf.is_nan(loss)
-    points = tf.where(nans)    
-    self.print_op.append(tf.Print(points, [points, tf.shape(points)], message="points that are nan in the loss: ", summarize=100))
+    # nans = tf.is_nan(loss)
+    # points = tf.where(nans)    
+    # self.print_op.append(tf.Print(points, [points, tf.shape(points)], message="points that are nan in the loss: ", summarize=100))
     ###
 
     loss = tf.reshape(loss, [-1, H*W*B*(4 + 1 + C)])
