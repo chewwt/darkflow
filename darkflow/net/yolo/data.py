@@ -117,7 +117,6 @@ def shuffle(self, training = True):
     if training:
         self.meta['batch_per_epoch'] = batch_per_epoch
         print("batch per epoch:", batch_per_epoch)
-        self.meta['step_now'] = self.FLAGS.load
     else:
         self.meta['val_batch_per_epoch'] = batch_per_epoch
         print("val batch per epoch:", batch_per_epoch)
