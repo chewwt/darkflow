@@ -85,23 +85,15 @@ class Darknet(object):
 
             if freeze > 0 and i+1 <= freeze:
                 layer.freeze = True
-            elif freeze < 0 and i+1 < len(self.layers) + freeze:
+            elif freeze < 0 and i < len(self.layers) + freeze:
                 layer.freeze = True
             else:
                 layer.freeze = False
 
             if cutoff > 0 and i+1 > cutoff:
                 layer.w = {}
-            elif cutoff < 0 and i+1 >= len(self.layers) + cutoff:
-                print('cutoff', i+1)
+            elif cutoff < 0 and i >= len(self.layers) + cutoff:
                 layer.w = {}
-
-
-
-            # print(layer.w.keys())
-            # if 'kernel' in layer.w:
-            #     print(layer.w['kernel'].shape)
-            # print(layer.freeze)
 
         stop = time.time()
         print('Finished in {}s'.format(stop - start))

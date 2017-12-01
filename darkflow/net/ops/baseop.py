@@ -35,7 +35,8 @@ class BaseOp(object):
             str(self.num), self.lay.type)
         self.gap = roof - self.num
         self.var = not self.gap > 0
-        self.act = 'Load '
+        # self.act = 'Load '
+        self.act = 'NA '
         self.convert(feed)
         # if self.var: self.train_msg = 'Yep! '
         # else: self.train_msg = 'Nope '
@@ -79,6 +80,7 @@ class BaseOp(object):
         else:
             val = self.lay.w[var]
             self.lay.w[var] = tf.constant_initializer(val)
+            self.act = 'Load '
 
         if not self.var: return
         
