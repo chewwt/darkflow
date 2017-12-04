@@ -52,7 +52,7 @@ def train(self):
             self.FLAGS.epoch, self.FLAGS.save
         ))
 
-        step_now = self.FLAGS.load + i + 1
+        self.meta['step_now'] += 1
         # test = time.time()
         # # x_batch = self.sess.run(x_batch)
         # batch = list()
@@ -86,16 +86,14 @@ def train(self):
             tf.Summary.Value(tag='{}_loss'.format(self.meta['model']), simple_value=loss_mva), 
         ])
 
-        self.writer.add_summary(summary, step_now)
+        self.writer.add_summary(summary, self.meta['step_now'])
 
         form = 'Epoch {} - step {} - loss {} - moving ave loss {}'
-        self.say(form.format(self.meta['curr_epoch'], step_now, loss, loss_mva))
+        self.say(form.format(self.meta['curr_epoch'], self.meta['step_now'], loss, loss_mva))
         
         profile += [(loss, loss_mva)]
-        # ckpt = (i+1) % (self.FLAGS.save // self.FLAGS.batch)
-        # ckpt = (i+1) % (self.FLAGS.save)
-        ckpt = (step_now) % (self.FLAGS.save)
-        args = [step_now, profile]
+        ckpt = (self.meta['step_now']) % (self.FLAGS.save)
+        args = [self.meta['step_now'], profile]
         if not ckpt: _save_ckpt(self, *args)
 
         # VALIDATION
@@ -118,9 +116,9 @@ def train(self):
                 val_loss += loss
                 
                 form = '{} Validation - epoch {} - step {} - batch loss {}'
-                self.say(form.format(j, self.meta['curr_epoch'], step_now, loss))
+                self.say(form.format(j, self.meta['curr_epoch'], self.meta['step_now'], loss))
 
-                if j+1 == self.meta['val_batch_per_epoch']:
+                if j+1 >= self.meta['val_batch_per_epoch']:
                     break
 
             val_loss /= float(self.meta['val_batch_per_epoch'])
@@ -132,10 +130,10 @@ def train(self):
                 tf.Summary.Value(tag='{}_loss'.format(self.meta['model']), simple_value=val_loss), 
             ])
 
-            self.val_writer.add_summary(summary, step_now)  
+            self.val_writer.add_summary(summary, self.meta['step_now'])  
 
             form = 'Validation - epoch {} - step {} - loss {} - ave loss {}'
-            self.say(form.format(self.meta['curr_epoch'], step_now, val_loss, val_loss_mva))
+            self.say(form.format(self.meta['curr_epoch'], self.meta['step_now'], val_loss, val_loss_mva))
 
     if ckpt: _save_ckpt(self, *args)
 
