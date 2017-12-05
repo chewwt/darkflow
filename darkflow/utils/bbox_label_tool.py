@@ -8,6 +8,8 @@ import os
 import sys
 import xml.etree.ElementTree as ET
 import glob
+from collections import defaultdict
+import numpy as np
 
 def _pp(l): # pretty printing 
     for i in l: print('{}: {}'.format(i,l[i]))
@@ -37,9 +39,9 @@ def bbox_label_tool(ANN, pick, exclusive = False):
         with open(file, 'r') as f:
             csvreader = csv.reader(f, delimiter=' ')
             jpg = file.split('.')[0] + '.jpg'
-            w = 640
-            h = 480
-            all = list()
+            w = 1200
+            h = 900
+            objs = list()
             head = True
 
             for row in csvreader:
@@ -57,11 +59,11 @@ def bbox_label_tool(ANN, pick, exclusive = False):
                 yn = int(row[1])
                 yx = int(row[3])
                 current = [name,xn,yn,xx,yx]
-                all += [current]
+                objs += [current]
 
-        add = [[jpg, [w, h, all]]]
+        add = [[jpg, [w, h, objs]]]
         dumps += add
-
+            
     # gather all stats
     stat = dict()
     for dump in dumps:
@@ -79,3 +81,38 @@ def bbox_label_tool(ANN, pick, exclusive = False):
 
     os.chdir(cur_dir)
     return dumps    
+
+def bbox_label_gt(ANN):
+    if not os.path.isdir(ANN):
+        raise IOError('not a directory')
+
+    anns = glob.glob(os.path.join(ANN, '*.txt'))
+
+    truth = defaultdict(dict)
+
+    for file in anns:
+        name = file.split('/')[-1]
+        name = name.split('.')[0]
+        with open(file, 'r') as f:
+            csvreader = csv.reader(f, delimiter=' ')
+            head = True
+            for row in csvreader:
+                if head:
+                    head = False
+                    continue
+
+
+                xmin = int(row[0])
+                xmax = int(row[2])
+                ymin = int(row[1])
+                ymax = int(row[3])
+                            
+                if name in truth and row[4] in truth[name]:
+                    truth[name][row[4]]['bboxs'] = np.vstack((truth[name][row[4]]['bboxs'], np.array([xmin, xmax, ymin, ymax])))
+                    truth[name][row[4]]['is_dets'] = np.append(truth[name][row[4]]['is_dets'], 0)
+
+                else:       
+                    truth[name][row[4]] = {'bboxs': np.array([[xmin, xmax, ymin, ymax]], dtype=int), \
+                                        'is_dets': np.array([0])}
+                
+    return truth                                    

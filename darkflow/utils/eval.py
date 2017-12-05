@@ -9,6 +9,7 @@ import glob
 import matplotlib.pyplot as plt
 
 from open_images_csv import open_images_csv_gt
+from bbox_label_tool import bbox_label_gt
 
 # return full path of files
 def get_files(out_path):
@@ -48,14 +49,17 @@ def get_images_detection(files):
 # return dict
 # {img:
 #     {obj:
-#         {bboxs: [bbox1, [bbox2], ...]
+#         {bboxs: [[bbox1], [bbox2], ...]
 #         is_dets: [isDetected1, isDetected2, ...] (all init to 0)
 #         }
 #     }
 # }
 def get_ground_truth(ann):
-    return open_images_csv_gt(ann)
-    
+    try:
+        #return open_images_csv_gt(ann)
+        return bbox_label_gt(ann)
+    except IOError:
+        raise
 
 # returns a np array [recall, precision]
 def get_recall_precision(truth, det, gt_obj_num, overlap_thres, confidence_thres, verbose=False):
@@ -290,9 +294,12 @@ def evaluate(ann, path, classes, overlap_thres, cal_recall, confidence_thres, is
     if len(files) == 0:
         raise IOError('no files found in', path)
 
-    truth = get_ground_truth(ann)
-    # print(truth)
-
+    try:
+        truth = get_ground_truth(ann)
+        # print(truth)
+    except IOError:
+        raise
+            
     if cal_recall:
         gt_obj_num = get_gt_obj_num(truth)
         return get_recall_precision(truth, det, gt_obj_num, overlap_thres, confidence_thres, verbose=isVerbose)
@@ -328,7 +335,7 @@ def main(ann, out_path, label, overlap_thres, recall, confidence_thres, isVerbos
                 writer.writerow(np.append(f_name, results))
 
         except IOError as err:
-            print(err, err.__cause__)
+            print("oh no", err, err.__cause__)
             continue 
 
     if csv_file is not None:
