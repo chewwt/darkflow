@@ -80,58 +80,32 @@ def open_images_csv(ANN, pick, exclusive = False):
 
     return dumps
 
-# get ground truth in eval.py desired format
+# get ground truth in eval.py desired format   
 # ANN is the csv file with all the annotations
-# image_ids is a python array with all the image ids to be evaluated
-def open_images_csv_gt(ANN, image_ids):
-    image_ids = sorted(image_ids, key=functools.cmp_to_key(cmp))
+# each row: [0]img [2]class [3]xmin [4]xmax [5]ymin [6]ymax
+def open_images_csv_gt(ANN):
     index = 0
     previous = None
-    # truth = {}
     truth = defaultdict(dict)
 
     with open(ANN, 'r') as f:
         csvreader = csv.reader(f, delimiter=',')
         for row in csvreader:
             name = row[0].split('.')[0]
-            if previous is not None and name != previous:
-                index += 1
-                previous = None
 
-            if index == len(image_ids):
-                break
+            w = row[7]
+            h = row[8]
 
-            if name == image_ids[index]:
-                previous = name
+            xmin = int(float(row[3]) * float(w))
+            xmax = int(float(row[4]) * float(w))
+            ymin = int(float(row[5]) * float(h))
+            ymax = int(float(row[6]) * float(h))
 
-                w = row[7]
-                h = row[8]
-
-                xmin = int(float(row[3]) * float(w))
-                xmax = int(float(row[4]) * float(w))
-                ymin = int(float(row[5]) * float(h))
-                ymax = int(float(row[6]) * float(h))
-
-                if name in truth and row[2] in truth[name]:
-                    # truth[name][row[2]] = np.vstack((truth[name][row[2]], np.array([[xmin, xmax, ymin, ymax], 0])))
-                    truth[name][row[2]]['bboxs'] = np.vstack((truth[name][row[2]]['bboxs'], np.array([xmin, xmax, ymin, ymax])))
-                    truth[name][row[2]]['is_dets'] = np.append(truth[name][row[2]]['is_dets'], 0)
-                    # else:
-                    #     truth[name].update({row[2]: np.expand_dims(np.array([[xmin, xmax, ymin, ymax], 0], dtype=int), axis=0)})
-                else:
-                    truth[name].update({row[2]: {'bboxs': np.array([[xmin, xmax, ymin, ymax]], dtype=int), \
-                                           'is_dets': np.array([0])}})
-               
-            elif cmp(name, image_ids[index]) > 0:
-                while cmp(name, image_ids[index]) > 0:
-                    index += 1
-                continue
-
-
+            if name in truth and row[2] in truth[name]:
+                truth[name][row[2]]['bboxs'] = np.vstack((truth[name][row[2]]['bboxs'], np.array([xmin, xmax, ymin, ymax])))
+                truth[name][row[2]]['is_dets'] = np.append(truth[name][row[2]]['is_dets'], 0)
+            else:
+                truth[name][row[2]] = {'bboxs': np.array([[xmin, xmax, ymin, ymax]], dtype=int), \
+                                       'is_dets': np.array([0])}
+   
     return truth
-
-def cmp(x, y):
-    num_x = int(x, 16) + 0x200
-    num_y = int(y, 16) + 0x200
-
-    return num_x - num_y

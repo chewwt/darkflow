@@ -10,28 +10,23 @@ import matplotlib.pyplot as plt
 
 from open_images_csv import open_images_csv_gt
 
-# return full path of files and file index.
+# return full path of files
 def get_files(out_path):
     if not os.path.isdir(out_path):
         raise IOError('Not a folder', out_path)
     files = os.path.join(out_path, '*.json')
     files = glob.glob(files)
 
-    image_ids = []
+    return files
+
+# return dict[img][obj][[bbox1, conf1], [bbox2, conf2], ...]
+def get_images_detection(files):
+
+    det = {}
 
     for f in files:
         name = f.split('/')[-1]
         name = name.split('.')[0]
-        image_ids.append(name)
-
-    return files, image_ids
-
-# return dict[img][obj][[bbox1, conf1], [bbox2, conf2], ...]
-def get_images_detection(files, image_ids):
-
-    det = {}
-
-    for f, name in zip(files, image_ids):
 
         with open(f, 'r') as j:
             data = json.load(j)
@@ -50,7 +45,6 @@ def get_images_detection(files, image_ids):
 
     return det
 
-# ann_csv row: [0]img [2]class [3]xmin [4]xmax [5]ymin [6]ymax
 # return dict
 # {img:
 #     {obj:
@@ -59,8 +53,8 @@ def get_images_detection(files, image_ids):
 #         }
 #     }
 # }
-def get_ground_truth(ann, image_ids):
-    return open_images_csv_gt(ann, image_ids)
+def get_ground_truth(ann):
+    return open_images_csv_gt(ann)
     
 
 # returns a np array [recall, precision]
@@ -119,7 +113,7 @@ def get_recall_precision(truth, det, gt_obj_num, overlap_thres, confidence_thres
     recall = float(sum_tp) / gt_obj_num
     precision = float(sum_tp) / np.maximum(sum_tp + sum_fp, np.finfo(np.float64).eps)
 
-    if isVerbose:
+    if verbose:
         print('Recall:', sum_tp, '/', gt_obj_num, '   Precision:', sum_tp, '/', sum_tp + sum_fp)
     print('Recall:', round(recall, 5), '   Precision:', round(precision, 5))
    
@@ -288,15 +282,15 @@ def pp(truth):
 def evaluate(ann, path, classes, overlap_thres, cal_recall, confidence_thres, isVerbose):
     print(path)
     try:
-        files, image_ids = get_files(path)
-        det = get_images_detection(files, image_ids)
+        files = get_files(path)
+        det = get_images_detection(files)
     except IOError:
         raise
 
     if len(files) == 0:
         raise IOError('no files found in', path)
 
-    truth = get_ground_truth(ann, image_ids)
+    truth = get_ground_truth(ann)
     # print(truth)
 
     if cal_recall:
