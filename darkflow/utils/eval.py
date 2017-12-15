@@ -156,11 +156,11 @@ def get_classes(label):
 
 def get_ap(rec, pre):
     # # first append sentinel values at the end
-    # mrec = np.concatenate(([0.], rec, [1.]))
-    # mpre = np.concatenate(([0.], pre, [0.]))
+    mrec = np.concatenate(([0.], rec, [1.]))
+    mpre = np.concatenate(([0.], pre, [0.]))
     # print(len(rec))
-    mrec = rec
-    mpre = pre
+    # mrec = rec
+    # mpre = pre
 
     # compute the precision envelope
     for i in range(mpre.size - 1, 0, -1):
@@ -315,7 +315,7 @@ def main(ann, out_path, label, overlap_thres, recall, confidence_thres, isVerbos
     classes = get_classes(label)
 
     if not os.path.isdir(out_path):
-        paths = glob.glob(out_path)
+        paths = sorted(glob.glob(out_path))
     else:
         paths = [out_path]
 
