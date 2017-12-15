@@ -62,6 +62,8 @@ def open_images_csv(ANN, pick, exclusive = False):
             objs.append([class_name, xmin, ymin, xmax, ymax])
 
             prev_img = img_name
+
+        dumps.append([prev_img, [w, h , objs]])
   
     # gather all stats
     stat = dict()
