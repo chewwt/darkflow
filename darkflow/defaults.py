@@ -34,7 +34,7 @@ class argHandler(dict):
         self.define('lr', 1e-5, 'learning rate')
         self.define('keep',20,'Number of most recent training results to save')
         self.define('batch', 16, 'batch size')
-        self.define('epoch', 1000, 'number of epoch')
+        self.define('epoch', 1000, 'number of epoch to train until. If checkpoint is beyond this, wont train')
         self.define('save', 1000, 'save checkpoint every ? training steps')
         self.define('demo', '', 'demo on webcam')
         self.define('queue', 1, 'process demo in batch')
@@ -43,7 +43,7 @@ class argHandler(dict):
         self.define('pbLoad', '', 'path to .pb protobuf file (metaLoad must also be specified)')
         self.define('metaLoad', '', 'path to .meta file generated during --savepb that corresponds to .pb file')
         self.define('freeze', 0, 'number of layers to freeze from the front. If negative, means freeze all except abs(number) from the back')
-        self.define('cutoff', 0, 'number of layers to transfer weights from the front. If negative, means transfer all layers except abs(number) from the back')
+        self.define('cutoff', 0, 'number of layers to transfer weights from the front. If negative, means reinitailise abs(number) layers from the back')
 
     def define(self, argName, default, description):
         self[argName] = default
