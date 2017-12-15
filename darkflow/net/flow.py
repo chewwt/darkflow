@@ -71,8 +71,8 @@ def train(self):
         feed_dict.update(self.feed)
 
         # fetches = [self.train_op, loss_op, self.summary_op, self.points_print, self.framework.print_op, self.framework.check_op] 
-        # fetches = [self.train_op, loss_op, self.framework.print_op, self.framework.check_op] 
-        fetches = [self.train_op, loss_op, self.framework.check_op] 
+        fetches = [self.train_op, loss_op, self.framework.print_op, self.framework.check_op] 
+        # fetches = [self.train_op, loss_op, self.framework.check_op] 
         
         fetched = self.sess.run(fetches, feed_dict)
         loss = fetched[1]
@@ -99,7 +99,7 @@ def train(self):
         # VALIDATION
         # if prev_epoch is None or prev_epoch != self.meta['curr_epoch']:
         # if self.FLAGS.validation and self.meta['curr_epoch'] != 0 and i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
-        if self.FLAGS.validation and i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
+        if self.FLAGS.validation and (self.meta['step_now'] % (self.FLAGS.val_step * self.meta['batch_per_epoch'])) == 0:
             val_loss = 0.0
 
             for j, (x_batch, datum) in enumerate(val_batches):

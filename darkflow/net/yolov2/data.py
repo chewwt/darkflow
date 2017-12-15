@@ -51,10 +51,10 @@ def _batch(self, chunk, training = True):
         obj[4] = float(obj[4]-obj[2]) / h
         obj[3] = np.sqrt(obj[3]) # to reflect that small deviations in large boxes matter less than in small boxes
         obj[4] = np.sqrt(obj[4])
-        obj[1] = cx - np.floor(cx) # centerx
-        obj[2] = cy - np.floor(cy) # centery
+        obj[1] = cx - np.floor(cx) # position in grid
+        obj[2] = cy - np.floor(cy) # position in grid
         obj += [int(np.floor(cy) * W + np.floor(cx))] # number in row major order
-
+        
     # show(im, allobj, S, w, h, cellx, celly) # unit test
 
     # Calculate placeholders' values
@@ -63,12 +63,6 @@ def _batch(self, chunk, training = True):
     coord = np.zeros([H*W,B,4]) # guess coordinates
     proid = np.zeros([H*W,B,C]) # guess objectness??
     prear = np.zeros([H*W,4]) # guess box shape at a point
-
-    # probs = np.zeros([H*W,B,C]) 
-    # confs = np.ones([H*W,B]) * 1e-5
-    # coord = np.zeros([H*W,B,4])
-    # proid = np.zeros([H*W,B,C])
-    # prear = np.zeros([H*W,4])
 
     for obj in allobj:
         # will this override if 2 objs have same index?

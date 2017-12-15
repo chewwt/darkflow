@@ -59,13 +59,34 @@ def loss(self, net_out):
     # adjusted_coords_xy = expit_tensor(coords[:,:,:,0:2]) # get sigmoid of xy # never add cx, cy
     adjusted_coords_xy = tf.nn.sigmoid(coords[:,:,:,0:2])
     # adjusted_coords_wh = tf.sqrt(tf.exp(coords[:,:,:,2:4]) * np.reshape(anchors, [1, 1, B, 2]) / np.reshape([W, H], [1, 1, 1, 2])) # sqrt(e^prediction * prior) sqrt reason in yolov1? not sure how priors calculated
-    adjusted_coords_wh = tf.sqrt(tf.clip_by_value(tf.exp(coords[:,:,:,2:4]) * np.reshape(anchors, [1, 1, B, 2]) / np.reshape([W, H], [1, 1, 1, 2]), 1e-10, 1e5)) # following https://github.com/tensorflow/tensorflow/issues/4914
+    
+    # coords_min = tf.reduce_min(coords[:,:,:,2:4])
+    # self.print_op.append(tf.Print(coords_min, [coords_min], message='coords min', summarize=100))
+    # coords_argmin = tf.where(tf.equal(coords[:,:,:,2:4], coords_min))
+    # self.print_op.append(tf.Print(coords_argmin, [coords_argmin, tf.shape(coords_argmin)], message='coords argmin', summarize=100))
+    
+    # coords_max = tf.reduce_max(coords[:,:,:,2:4])
+    # self.print_op.append(tf.Print(coords_max, [coords_max], message='coords max', summarize=100))
+    # coords_argmax = tf.where(tf.equal(coords[:,:,:,2:4], coords_max))
+    # self.print_op.append(tf.Print(coords_argmax, [coords_argmax, tf.shape(coords_argmax)], message='coords argmax', summarize=100))
+
+    ad_wh = tf.exp(tf.clip_by_value(coords[:,:,:,2:4], -1e3, 10)) * np.reshape(anchors, [1, 1, B, 2]) / np.reshape([W, H], [1, 1, 1, 2])
+    
+    # norm_wh_min = tf.reduce_min(norm_wh)
+    # self.print_op.append(tf.Print(norm_wh_min, [norm_wh_min], message='norm_wh min', summarize=100))
+    # norm_wh_argmin = tf.where(tf.equal(norm_wh, norm_wh_min))
+    # self.print_op.append(tf.Print(norm_wh_argmin, [norm_wh_argmin, tf.shape(norm_wh_argmin)], message='norm_wh argmin', summarize=100))
+    
+    # norm_wh_max = tf.reduce_max(norm_wh)
+    # self.print_op.append(tf.Print(norm_wh_max, [norm_wh_max], message='norm_wh max', summarize=100))
+    # norm_wh_argmax = tf.where(tf.equal(norm_wh, norm_wh_max))
+    # self.print_op.append(tf.Print(norm_wh_argmax, [norm_wh_argmax, tf.shape(norm_wh_argmax)], message='norm_wh argmax', summarize=100))
+
+    adjusted_coords_wh = tf.sqrt(tf.clip_by_value(ad_wh, 1e-10, 1e5)) # following https://github.com/tensorflow/tensorflow/issues/4914
     coords = tf.concat([adjusted_coords_xy, adjusted_coords_wh], 3) # join back
 
     # adjusted_c = expit_tensor(net_out_reshape[:, :, :, :, 4]) # sigmoid of to
     adjusted_c = tf.nn.sigmoid(net_out_reshape[:, :, :, :, 4])
-    # addition = tf.to_float(tf.less_equal(adjusted_c, 0.1)) * 0.1
-    # adjusted_c = tf.add(adjusted_c, addition)
     adjusted_c = tf.reshape(adjusted_c, [-1, H*W, B, 1]) # row major order indexing like placeholder input
 
     adjusted_prob = tf.nn.softmax(net_out_reshape[:, :, :, :, 5:]) # normalize
@@ -108,31 +129,6 @@ def loss(self, net_out):
     wght = tf.concat([cooid, tf.expand_dims(conid, 3), proid ], 3) # predictions, scaled
 
     #### DEBUGGING
-    # best_box_min = tf.reduce_min(best_box)
-    # self.print_op.append(tf.Print(best_box_min, [best_box_min], message='best_box min', summarize=100))
-    # best_box_argmin = tf.where(tf.equal(best_box, best_box_min))
-    # self.print_op.append(tf.Print(best_box_argmin, [best_box_argmin, tf.shape(best_box_argmin)], message='best_box argmin', summarize=100))
-    
-    # confs_min = tf.reduce_min(confs)
-    # self.print_op.append(tf.Print(confs_min, [confs_min], message='confs min', summarize=100))
-    # confs_argmin = tf.where(tf.equal(confs, confs_min))
-    # self.print_op.append(tf.Print(confs_argmin, [confs_argmin, tf.shape(confs_argmin)], message='confs argmin', summarize=100))
-    
-    # conid_min = tf.reduce_min(conid)
-    # self.print_op.append(tf.Print(conid_min, [conid_min], message='conid min', summarize=100))
-    # conid_argmin = tf.where(tf.equal(conid, conid_min))
-    # self.print_op.append(tf.Print(conid_argmin, [conid_argmin, tf.shape(conid_argmin)], message='conid argmin', summarize=100))
-    
-    # true_min = tf.reduce_min(true[:,:,:,4])
-    # self.print_op.append(tf.Print(true_min, [true_min], message='true min', summarize=100))
-    # true_argmin = tf.where(tf.equal(true[:,:,:,4], true_min))
-    # self.print_op.append(tf.Print(true_argmin, [true_argmin, tf.shape(true_argmin)], message='true argmin', summarize=100))
-          
-    # wght_min = tf.reduce_min(wght[:,:,:,4])
-    # self.print_op.append(tf.Print(wght_min, [wght_min], message='wght min', summarize=100))
-    # wght_argmin = tf.where(tf.equal(wght[:,:,:,4], wght_min))
-    # self.print_op.append(tf.Print(wght_argmin, [wght_argmin, tf.shape(wght_argmin)], message='wght argmin', summarize=100))
-    
     # adjusted_net_out_min = tf.reduce_min(adjusted_net_out[:,:,:,2:4])
     # self.print_op.append(tf.Print(adjusted_net_out_min, [adjusted_net_out_min], message='adjusted_net_out min', summarize=100))
     # adjusted_net_out_argmin = tf.where(tf.equal(adjusted_net_out[:,:,:,2:4], adjusted_net_out_min))
@@ -148,7 +144,7 @@ def loss(self, net_out):
     print('Building {} loss'.format(m['model']))
     # loss = tf.pow(adjusted_net_out - true, 2) # loss function in yolo v1. xywh P(object) C
     loss = tf.square(adjusted_net_out - true)
-    loss = tf.multiply(loss, wght) # not sure?
+    loss = tf.multiply(loss, wght) # apply the scales
     ### DEBUG
     # loss_min = tf.reduce_min(loss[:,:,:,4])
     # self.print_op.append(tf.Print(loss_min, [loss_min], message='loss min', summarize=100))
@@ -160,9 +156,9 @@ def loss(self, net_out):
     # loss_argmax = tf.where(tf.equal(loss[:,:,:,4], loss_max))
     # self.print_op.append(tf.Print(loss_argmax, [loss_argmax, tf.shape(loss_argmax)], message='loss argmax', summarize=100))
     
-    # nans = tf.is_nan(loss)
-    # points = tf.where(nans)    
-    # self.print_op.append(tf.Print(points, [points, tf.shape(points)], message="points that are nan in the loss: ", summarize=100))
+    nans = tf.is_nan(loss)
+    points = tf.where(nans)
+    self.print_op.append(tf.Print(points, [points, tf.shape(points)], message="points that are nan in the loss: ", summarize=100))
     ###
 
     loss = tf.reshape(loss, [-1, H*W*B*(4 + 1 + C)])
