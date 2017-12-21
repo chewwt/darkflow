@@ -12,6 +12,10 @@ import os
 old_graph_msg = 'Resolving old graph def {} (no guarantee)'
 
 def build_train_op(self):
+    # self.framework.img_placeholder = tf.placeholder(tf.float32, shape=[None, None, 3])
+    # self.framework.preprocess_tf(self.framework.img_placeholder)
+    self.framework.check_op = []
+    self.framework.print_op = []
     self.framework.loss(self.out)
     self.say('Building {} train op'.format(self.meta['model']))
     optimizer = self._TRAINER[self.FLAGS.trainer](self.FLAGS.lr)

@@ -5,10 +5,14 @@ import os
 import sys
 import glob
 import csv
+import functools
+from collections import defaultdict
+import numpy as np
 
 def _pp(l): # pretty printing 
     for i in l: print('{}: {}'.format(i,l[i]))
 
+# returns data for training
 # ANN will be the annotation csv file
 def open_images_csv(ANN, pick, exclusive = False):
     print('Parsing for {} {}'.format(
@@ -58,6 +62,8 @@ def open_images_csv(ANN, pick, exclusive = False):
             objs.append([class_name, xmin, ymin, xmax, ymax])
 
             prev_img = img_name
+
+        dumps.append([prev_img, [w, h , objs]])
   
     # gather all stats
     stat = dict()
@@ -75,3 +81,33 @@ def open_images_csv(ANN, pick, exclusive = False):
     print('Dataset size: {}'.format(len(dumps)))
 
     return dumps
+
+# get ground truth in eval.py desired format   
+# ANN is the csv file with all the annotations
+# each row: [0]img [2]class [3]xmin [4]xmax [5]ymin [6]ymax
+def open_images_csv_gt(ANN):
+    index = 0
+    previous = None
+    truth = defaultdict(dict)
+
+    with open(ANN, 'r') as f:
+        csvreader = csv.reader(f, delimiter=',')
+        for row in csvreader:
+            name = row[0].split('.')[0]
+
+            w = row[7]
+            h = row[8]
+
+            xmin = int(float(row[3]) * float(w))
+            xmax = int(float(row[4]) * float(w))
+            ymin = int(float(row[5]) * float(h))
+            ymax = int(float(row[6]) * float(h))
+
+            if name in truth and row[2] in truth[name]:
+                truth[name][row[2]]['bboxs'] = np.vstack((truth[name][row[2]]['bboxs'], np.array([xmin, xmax, ymin, ymax])))
+                truth[name][row[2]]['is_dets'] = np.append(truth[name][row[2]]['is_dets'], 0)
+            else:
+                truth[name][row[2]] = {'bboxs': np.array([[xmin, xmax, ymin, ymax]], dtype=int), \
+                                       'is_dets': np.array([0])}
+   
+    return truth

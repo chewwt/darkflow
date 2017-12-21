@@ -1,12 +1,15 @@
-# from ...utils.pascal_voc_clean_xml import pascal_voc_clean_xml
+from ...utils.pascal_voc_clean_xml import pascal_voc_clean_xml
 from ...utils.open_images_csv import open_images_csv
+# from ...utils.bbox_label_tool import bbox_label_tool
 from numpy.random import permutation as perm
 from .predict import preprocess
 # from .misc import show
 from copy import deepcopy
 import pickle
 import numpy as np
+import tensorflow as tf
 import os 
+import sys
 
 def parse(self, exclusive = False, training = True):
     meta = self.meta
@@ -16,11 +19,13 @@ def parse(self, exclusive = False, training = True):
     else:
         ann = self.FLAGS.val_annotation
     if not os.path.isfile(ann):
+    # if not os.path.isdir(ann):
         msg = 'Annotation file not found {} .'
         exit('Error: {}'.format(msg.format(ann)))
     print('\n{} parsing {}'.format(meta['model'], ann))
     # dumps = pascal_voc_clean_xml(ann, meta['labels'], exclusive)
     dumps = open_images_csv(ann, meta['labels'], exclusive)
+    # dumps = bbox_label_tool(ann, meta['labels'], exclusive)
     return dumps
 
 
@@ -30,6 +35,7 @@ def _batch(self, chunk, training = True):
     returns value for placeholders of net's 
     input & loss layer correspond to this chunk
     """
+
     meta = self.meta
     S, B = meta['side'], meta['num']
     C, labels = meta['classes'], meta['labels']
@@ -107,12 +113,25 @@ def shuffle(self, training = True):
 
     print('Dataset of {} instance(s)'.format(size))
     if batch > size: self.FLAGS.batch = batch = size
-    batch_per_epoch = int(size / batch)
-    print("batch per epoch:", batch_per_epoch)
+    batch_per_epoch = int(size // batch)
+    if training:
+        self.meta['batch_per_epoch'] = batch_per_epoch
+        print("batch per epoch:", batch_per_epoch)
+    else:
+        self.meta['val_batch_per_epoch'] = batch_per_epoch
+        print("val batch per epoch:", batch_per_epoch)
 
-    for i in range(self.FLAGS.epoch):
+    # total_time = 0
+    if training:
+        self.meta['curr_epoch'] = int(self.meta['step_now'] // self.meta['batch_per_epoch'])
+        num = self.FLAGS.epoch - self.meta['curr_epoch']
+        print(num, "epochs to train")
+    else:
+        num = sys.maxsize
+        
+    for i in range(num):
         if training:
-            self.meta['curr_epoch'] = i
+            self.meta['curr_epoch'] = int(self.meta['step_now'] // self.meta['batch_per_epoch'])
             print("EPOCH:", self.meta['curr_epoch'])
         shuffle_idx = perm(np.arange(size))
         for b in range(batch_per_epoch):
@@ -122,11 +141,17 @@ def shuffle(self, training = True):
 
             for j in range(b*batch, b*batch+batch):
                 train_instance = data[shuffle_idx[j]]
+                # print(train_instance)
                 
+                # inp, new_feed, timing = self._batch(train_instance, training = training)
                 inp, new_feed = self._batch(train_instance, training = training)
-
+                
                 if inp is None: continue
-                x_batch += [np.expand_dims(inp, 0)]
+                # total_time += timing
+                # print('before inp shape: ', inp.shape, '  after: ', np.expand_dims(inp, 0).shape)
+                x_batch += [inp]
+                # x_batch += [np.expand_dims(inp, 0)]
+                # x_batch += [tf.expand_dims(inp, 0)]
 
                 for key in new_feed:
                     new = new_feed[key]
@@ -136,8 +161,13 @@ def shuffle(self, training = True):
                         old_feed, [new] 
                     ])      
             
-            x_batch = np.concatenate(x_batch, 0)
+            # print("total time getting images", total_time)
+            # total_time = 0
+            # print('x_batch ', len(x_batch), x_batch[0])
+
+            # x_batch = np.concatenate(x_batch, 0)
+            # x_batch = tf.concat(x_batch, 0, name='x_batch')
+            # print('x_batch concat 0 ', x_batch)
             yield x_batch, feed_batch
         
         print('Finish {} epoch(es)'.format(i + 1))
-

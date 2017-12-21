@@ -1,5 +1,6 @@
 # from ...utils.pascal_voc_clean_xml import pascal_voc_clean_xml
 from ...utils.open_images_csv import open_images_csv
+# from ...utils.bbox_label_tool import bbox_label_tool
 from numpy.random import permutation as perm
 from ..yolo.predict import preprocess
 from ..yolo.data import shuffle
@@ -29,10 +30,13 @@ def _batch(self, chunk, training = True):
     else:
         path = os.path.join(self.FLAGS.val_dataset, jpg)
     try:
+        # img, timing = self.preprocess(path, allobj)
         img = self.preprocess(path, allobj)
+        # img = self.preprocess(path, None) # no data augmentation
     except Exception as e:
         print(path)
-        return None, None
+        print(e)
+        return None, None#, None
 
     # Calculate regression target
     cellx = 1. * w / W
@@ -42,28 +46,30 @@ def _batch(self, chunk, training = True):
         centery = .5*(obj[2]+obj[4]) #ymin, ymax
         cx = centerx / cellx
         cy = centery / celly
-        if cx >= W or cy >= H: return None, None
+        if cx >= W or cy >= H: return None, None#, None
         obj[3] = float(obj[3]-obj[1]) / w
         obj[4] = float(obj[4]-obj[2]) / h
-        obj[3] = np.sqrt(obj[3])
+        obj[3] = np.sqrt(obj[3]) # to reflect that small deviations in large boxes matter less than in small boxes
         obj[4] = np.sqrt(obj[4])
-        obj[1] = cx - np.floor(cx) # centerx
-        obj[2] = cy - np.floor(cy) # centery
-        obj += [int(np.floor(cy) * W + np.floor(cx))]
-
+        obj[1] = cx - np.floor(cx) # position in grid
+        obj[2] = cy - np.floor(cy) # position in grid
+        obj += [int(np.floor(cy) * W + np.floor(cx))] # number in row major order
+        
     # show(im, allobj, S, w, h, cellx, celly) # unit test
 
     # Calculate placeholders' values
-    probs = np.zeros([H*W,B,C])
-    confs = np.zeros([H*W,B])
-    coord = np.zeros([H*W,B,4])
-    proid = np.zeros([H*W,B,C])
-    prear = np.zeros([H*W,4])
+    probs = np.zeros([H*W,B,C]) # guess object
+    confs = np.zeros([H*W,B]) # guess objectness, cos line 91 in train.py
+    coord = np.zeros([H*W,B,4]) # guess coordinates
+    proid = np.zeros([H*W,B,C]) # guess objectness??
+    prear = np.zeros([H*W,4]) # guess box shape at a point
+
     for obj in allobj:
-        probs[obj[5], :, :] = [[0.]*C] * B
-        probs[obj[5], :, labels.index(obj[0])] = 1.
-        proid[obj[5], :, :] = [[1.]*C] * B
-        coord[obj[5], :, :] = [obj[1:5]] * B
+        # will this override if 2 objs have same index?
+        probs[obj[5], :, :] = [[0.]*C] * B # B lists of C number of 0.
+        probs[obj[5], :, labels.index(obj[0])] = 1. # for the correct class, set 1.
+        proid[obj[5], :, :] = [[1.]*C] * B # B lists of C number of 1.
+        coord[obj[5], :, :] = [obj[1:5]] * B # B lists of cx, cy, w, h. w and h is sqrt, from 0 to 1
         prear[obj[5],0] = obj[1] - obj[3]**2 * .5 * W # xleft
         prear[obj[5],1] = obj[2] - obj[4]**2 * .5 * H # yup
         prear[obj[5],2] = obj[1] + obj[3]**2 * .5 * W # xright
@@ -89,5 +95,5 @@ def _batch(self, chunk, training = True):
         'botright': botright
     }
 
-    return inp_feed_val, loss_feed_val
+    return inp_feed_val, loss_feed_val#, timing
 

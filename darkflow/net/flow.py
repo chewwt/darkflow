@@ -32,67 +32,107 @@ def _save_ckpt(self, step, loss_profile):
 def train(self):
     loss_ph = self.framework.placeholders
     loss_mva = None; profile = list()
-
     batches = self.framework.shuffle()
-    val_batches = self.framework.shuffle(training=False)
+
+    
+    if self.FLAGS.validation:
+        val_loss_mva = None;
+        val_batches = self.framework.shuffle(training=False)
+    
     loss_op = self.framework.loss
+    # preprocess_op = self.framework.img_out
 
-    train = [True]
     # prev_epoch = None
-
     for i, (x_batch, datum) in enumerate(batches):
+
+        start = time.time()
+
         if not i: self.say(train_stats.format(
             self.FLAGS.lr, self.FLAGS.batch,
             self.FLAGS.epoch, self.FLAGS.save
         ))
 
-        step_now = self.FLAGS.load + i + 1
+        self.meta['step_now'] += 1
+        # test = time.time()
+        # # x_batch = self.sess.run(x_batch)
+        # batch = list()
+        # for img in x_batch:
+        #     img_process = self.sess.run(preprocess_op, {self.framework.img_placeholder: img})
+        #     batch += [np.expand_dims(img_process, 0)]
 
+        # x_batch = np.concatenate(batch, 0)
+        # print('recolor and resize a batch', time.time() - test)
+
+        # TRAINING
+        feed_dict = {
+            loss_ph[key]: datum[key] 
+                for key in loss_ph }
+        feed_dict[self.inp] = x_batch
+        feed_dict.update(self.feed)
+
+        # fetches = [self.train_op, loss_op, self.summary_op, self.points_print, self.framework.print_op, self.framework.check_op] # if want W and b summaries
+        fetches = [self.train_op, loss_op, self.framework.print_op, self.framework.check_op] 
+        
+        fetched = self.sess.run(fetches, feed_dict)
+        loss = fetched[1]
+        # summary = fetched[2]  # if want W and b summaries
+        print("feed dict and sess run", time.time() - start)
+        
+        if loss_mva is None: loss_mva = loss
+        loss_mva = .9 * loss_mva + .1 * loss
+
+        summary = tf.Summary(value=[
+            tf.Summary.Value(tag='{}_loss'.format(self.meta['model']), simple_value=loss_mva), 
+        ])
+
+        self.writer.add_summary(summary, self.meta['step_now'])
+
+        form = 'Epoch {} - step {} - loss {} - moving ave loss {}'
+        self.say(form.format(self.meta['curr_epoch'], self.meta['step_now'], loss, loss_mva))
+        
+        profile += [(loss, loss_mva)]
+        ckpt = (self.meta['step_now']) % (self.FLAGS.save)
+        args = [self.meta['step_now'], profile]
+        if not ckpt: _save_ckpt(self, *args)
+
+        # VALIDATION
         # if prev_epoch is None or prev_epoch != self.meta['curr_epoch']:
-        if i % self.FLAGS.val_step == 0:
-            train = [True, False]
-            # prev_epoch = self.meta['curr_epoch']
-        else:
-            train = [True]
+        # if self.FLAGS.validation and self.meta['curr_epoch'] != 0 and i % (self.FLAGS.val_step * self.meta['batch_per_epoch']) == 0:
+        if self.FLAGS.validation and (self.meta['step_now'] % (self.FLAGS.val_step * self.meta['batch_per_epoch'])) == 0:
+            val_loss = 0.0
 
-        for training in train:
-            if not training:    # validation
-                (x_batch, datum) = next(val_batches)
+            for j, (x_batch, datum) in enumerate(val_batches):
+        
+                feed_dict = {
+                    loss_ph[key]: datum[key] 
+                        for key in loss_ph }
+                feed_dict[self.inp] = x_batch
+                # feed_dict.update(self.feed)
 
-            feed_dict = {
-                loss_ph[key]: datum[key] 
-                    for key in loss_ph }
-            feed_dict[self.inp] = x_batch
-            feed_dict.update(self.feed)
-
-            if training:
-                fetches = [self.train_op, loss_op, self.summary_op] 
-                fetched = self.sess.run(fetches, feed_dict)
-                loss = fetched[1]
-                summary = fetched[2]
-                writer = self.writer
-            else:
-                fetches = [loss_op, self.summary_op] 
+                fetches = [loss_op] 
                 fetched = self.sess.run(fetches, feed_dict)
                 loss = fetched[0]
-                summary = fetched[1]
-                writer = self.val_writer
+                val_loss += loss
+                
+                form = '{} Validation - epoch {} - step {} - batch loss {}'
+                self.say(form.format(j, self.meta['curr_epoch'], self.meta['step_now'], loss))
 
-            if loss_mva is None: loss_mva = loss
-            loss_mva = .9 * loss_mva + .1 * loss
+                if j+1 >= self.meta['val_batch_per_epoch']:
+                    break
 
-            writer.add_summary(summary, step_now)
+            val_loss /= float(self.meta['val_batch_per_epoch'])
+                   
+            if val_loss_mva is None: val_loss_mva = val_loss
+            val_loss_mva = .9 * val_loss_mva + .1 * val_loss
 
-            form = '{} {} step {} - loss {} - moving ave loss {}'
-            self.say(form.format("Validation - epoch" if not training else "", 
-                self.meta['curr_epoch'], step_now, loss, loss_mva))
-        
-            if training:
-                profile += [(loss, loss_mva)]
+            summary = tf.Summary(value=[
+                tf.Summary.Value(tag='{}_loss'.format(self.meta['model']), simple_value=val_loss), 
+            ])
 
-                ckpt = (i+1) % (self.FLAGS.save // self.FLAGS.batch)
-                args = [step_now, profile]
-                if not ckpt: _save_ckpt(self, *args)
+            self.val_writer.add_summary(summary, self.meta['step_now'])  
+
+            form = 'Validation - epoch {} - step {} - loss {} - ave loss {}'
+            self.say(form.format(self.meta['curr_epoch'], self.meta['step_now'], val_loss, val_loss_mva))
 
     if ckpt: _save_ckpt(self, *args)
 

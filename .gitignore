@@ -34,7 +34,7 @@ darkflow.egg-info/
 build/
 
 #TensorBoard logs
-summary/
+summary*/
 
 #Built graphs
 built_graph/
@@ -44,3 +44,6 @@ ckpt/*
 
 #pytest cache
 .cache/
+
+#temp files
+temp*.*

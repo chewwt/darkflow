@@ -24,7 +24,7 @@ class Darknet(object):
         	des_parsed = self.parse_cfg(FLAGS.model, FLAGS)
         	self.meta, self.layers = des_parsed
 
-        self.load_weights()
+        self.load_weights(FLAGS.freeze, FLAGS.cutoff)
 
     def get_weight_src(self, FLAGS):
         """
@@ -71,7 +71,7 @@ class Darknet(object):
             layers.append(new)
         return meta, layers
 
-    def load_weights(self):
+    def load_weights(self, freeze, cutoff):
         """
         Use `layers` and Loader to load .weights file
         """
@@ -80,7 +80,20 @@ class Darknet(object):
 
         args = [self.src_bin, self.src_layers]
         wgts_loader = loader.create_loader(*args)
-        for layer in self.layers: layer.load(wgts_loader)
-        
+        for i, layer in enumerate(self.layers): 
+            layer.wload(wgts_loader)
+
+            if freeze > 0 and i+1 <= freeze:
+                layer.freeze = True
+            elif freeze < 0 and i < len(self.layers) + freeze:
+                layer.freeze = True
+            else:
+                layer.freeze = False
+
+            if cutoff > 0 and i+1 > cutoff:
+                layer.w = {}
+            elif cutoff < 0 and i >= len(self.layers) + cutoff:
+                layer.w = {}
+
         stop = time.time()
         print('Finished in {}s'.format(stop - start))

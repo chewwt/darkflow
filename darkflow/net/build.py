@@ -141,9 +141,8 @@ class TFNet(object):
 		if self.FLAGS.summary is not None:
 			self.summary_op = tf.summary.merge_all()
 			self.writer = tf.summary.FileWriter(self.FLAGS.summary + 'train')
-	
-		if self.FLAGS.val_summary is not None:
-			self.val_writer = tf.summary.FileWriter(self.FLAGS.val_summary + 'val')
+			if self.FLAGS.validation:
+				self.val_writer = tf.summary.FileWriter(self.FLAGS.summary + 'val')
 			
 		self.sess = tf.Session(config = tf.ConfigProto(**cfg))
 		self.sess.run(tf.global_variables_initializer())
@@ -152,6 +151,7 @@ class TFNet(object):
 		self.saver = tf.train.Saver(tf.global_variables(), 
 			max_to_keep = self.FLAGS.keep)
 		if self.FLAGS.load != 0: self.load_from_ckpt()
+		self.meta['step_now'] = self.FLAGS.load
 		
 		if self.FLAGS.summary is not None:
 			self.writer.add_graph(self.sess.graph)

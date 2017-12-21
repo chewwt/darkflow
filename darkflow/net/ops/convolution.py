@@ -65,14 +65,24 @@ class local(BaseOp):
 
 class convolutional(BaseOp):
     def forward(self):
-        pad = [[self.lay.pad, self.lay.pad]] * 2;
-        temp = tf.pad(self.inp.out, [[0, 0]] + pad + [[0, 0]])
-        temp = tf.nn.conv2d(temp, self.lay.w['kernel'], padding = 'VALID', 
-            name = self.scope, strides = [1] + [self.lay.stride] * 2 + [1])
-        if self.lay.batch_norm: 
-            temp = self.batchnorm(self.lay, temp)
-        self.out = tf.nn.bias_add(temp, self.lay.w['biases'])
+        with tf.name_scope('Conv_Layer_' + str(self.lay.number)):
+            pad = [[self.lay.pad, self.lay.pad]] * 2;
+            temp = tf.pad(self.inp.out, [[0, 0]] + pad + [[0, 0]])
+            temp = tf.nn.conv2d(temp, self.lay.w['kernel'], padding = 'VALID', 
+                name = self.scope, strides = [1] + [self.lay.stride] * 2 + [1])
+            # tf.summary.histogram('W_conv', temp)
 
+            if self.lay.batch_norm: 
+                temp = self.batchnorm(self.lay, temp)
+                # tf.summary.histogram('W_bnorm', temp)
+            
+            self.out = tf.nn.bias_add(temp, self.lay.w['biases'])
+            # if not self.lay.freeze:
+            #     # tf.summary.histogram('Wout', self.out)
+            #     tf.summary.histogram('b', self.lay.w['biases'])
+            #     tf.summary.histogram('W', self.lay.w['kernel'])            
+            
+ 
     def batchnorm(self, layer, inp):
         if not self.var:
             temp = (inp - layer.w['moving_mean'])
@@ -85,8 +95,10 @@ class convolutional(BaseOp):
                 'epsilon': 1e-5, 'scope' : self.scope,
                 'updates_collections' : None,
                 'is_training': layer.h['is_training'],
-                'param_initializers': layer.w
+                'param_initializers': layer.w,
+                'trainable': not layer.freeze
                 })
+            # print(str(layer.number), 'bn', str(args['trainable']))
             return slim.batch_norm(inp, **args)
 
     def speak(self):
