@@ -70,13 +70,12 @@ def train(self):
         feed_dict[self.inp] = x_batch
         feed_dict.update(self.feed)
 
-        # fetches = [self.train_op, loss_op, self.summary_op, self.points_print, self.framework.print_op, self.framework.check_op] 
+        # fetches = [self.train_op, loss_op, self.summary_op, self.points_print, self.framework.print_op, self.framework.check_op] # if want W and b summaries
         fetches = [self.train_op, loss_op, self.framework.print_op, self.framework.check_op] 
-        # fetches = [self.train_op, loss_op, self.framework.check_op] 
         
         fetched = self.sess.run(fetches, feed_dict)
         loss = fetched[1]
-        # summary = fetched[2]
+        # summary = fetched[2]  # if want W and b summaries
         print("feed dict and sess run", time.time() - start)
         
         if loss_mva is None: loss_mva = loss

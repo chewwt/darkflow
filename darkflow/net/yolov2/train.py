@@ -56,32 +56,10 @@ def loss(self, net_out):
     net_out_reshape = tf.reshape(net_out, [-1, H, W, B, (4 + 1 + C)])
     coords = net_out_reshape[:, :, :, :, :4] # first 4 of last dim are coordinates
     coords = tf.reshape(coords, [-1, H*W, B, 4]) # change to row major order like placeholder inputs
-    # adjusted_coords_xy = expit_tensor(coords[:,:,:,0:2]) # get sigmoid of xy # never add cx, cy
+    
     adjusted_coords_xy = tf.nn.sigmoid(coords[:,:,:,0:2])
-    # adjusted_coords_wh = tf.sqrt(tf.exp(coords[:,:,:,2:4]) * np.reshape(anchors, [1, 1, B, 2]) / np.reshape([W, H], [1, 1, 1, 2])) # sqrt(e^prediction * prior) sqrt reason in yolov1? not sure how priors calculated
     
-    # coords_min = tf.reduce_min(coords[:,:,:,2:4])
-    # self.print_op.append(tf.Print(coords_min, [coords_min], message='coords min', summarize=100))
-    # coords_argmin = tf.where(tf.equal(coords[:,:,:,2:4], coords_min))
-    # self.print_op.append(tf.Print(coords_argmin, [coords_argmin, tf.shape(coords_argmin)], message='coords argmin', summarize=100))
-    
-    # coords_max = tf.reduce_max(coords[:,:,:,2:4])
-    # self.print_op.append(tf.Print(coords_max, [coords_max], message='coords max', summarize=100))
-    # coords_argmax = tf.where(tf.equal(coords[:,:,:,2:4], coords_max))
-    # self.print_op.append(tf.Print(coords_argmax, [coords_argmax, tf.shape(coords_argmax)], message='coords argmax', summarize=100))
-
-    ad_wh = tf.exp(tf.clip_by_value(coords[:,:,:,2:4], -1e3, 10)) * np.reshape(anchors, [1, 1, B, 2]) / np.reshape([W, H], [1, 1, 1, 2])
-    
-    # norm_wh_min = tf.reduce_min(norm_wh)
-    # self.print_op.append(tf.Print(norm_wh_min, [norm_wh_min], message='norm_wh min', summarize=100))
-    # norm_wh_argmin = tf.where(tf.equal(norm_wh, norm_wh_min))
-    # self.print_op.append(tf.Print(norm_wh_argmin, [norm_wh_argmin, tf.shape(norm_wh_argmin)], message='norm_wh argmin', summarize=100))
-    
-    # norm_wh_max = tf.reduce_max(norm_wh)
-    # self.print_op.append(tf.Print(norm_wh_max, [norm_wh_max], message='norm_wh max', summarize=100))
-    # norm_wh_argmax = tf.where(tf.equal(norm_wh, norm_wh_max))
-    # self.print_op.append(tf.Print(norm_wh_argmax, [norm_wh_argmax, tf.shape(norm_wh_argmax)], message='norm_wh argmax', summarize=100))
-
+    ad_wh = tf.exp(tf.clip_by_value(coords[:,:,:,2:4], -1e3, 10)) * np.reshape(anchors, [1, 1, B, 2]) / np.reshape([W, H], [1, 1, 1, 2]) # get sigmoid of xy # cx, cy removed when reading in data already # sqrt(e^prediction * prior) sqrt reason in yolov1. 
     adjusted_coords_wh = tf.sqrt(tf.clip_by_value(ad_wh, 1e-10, 1e5)) # following https://github.com/tensorflow/tensorflow/issues/4914
     coords = tf.concat([adjusted_coords_xy, adjusted_coords_wh], 3) # join back
 
@@ -94,7 +72,6 @@ def loss(self, net_out):
 
     adjusted_net_out = tf.concat([adjusted_coords_xy, adjusted_coords_wh, adjusted_c, adjusted_prob], 3) # xywhc, prob
 
-    # wh = tf.pow(coords[:,:,:,2:4], 2) * np.reshape([W, H], [1, 1, 1, 2]) # pow 2 cos sqrt just now
     wh = tf.square(coords[:,:,:,2:4]) * np.reshape([W, H], [1, 1, 1, 2])
     area_pred = tf.multiply(wh[:,:,:,0], wh[:,:,:,1])
     centers = coords[:,:,:,0:2]
@@ -113,7 +90,6 @@ def loss(self, net_out):
     iou = tf.truediv(intersect, _areas + area_pred - intersect) # intersect / all area
     best_box = tf.equal(iou, tf.reduce_max(iou, [2], True)) # reduce in B dim # best_box is array of True/False. True if that index has max in the B dim
     best_box = tf.to_float(best_box) # True to 1.0, False to 0.0
-    # best_box = tf.clip_by_value(best_box, 1e-5, 1.0)
     confs = tf.multiply(best_box, _confs) # * probability an object at that index?
     self.check_op.append(tf.check_numerics(confs, 'confs'))
 
@@ -142,9 +118,9 @@ def loss(self, net_out):
     ####
 
     print('Building {} loss'.format(m['model']))
-    # loss = tf.pow(adjusted_net_out - true, 2) # loss function in yolo v1. xywh P(object) C
-    loss = tf.square(adjusted_net_out - true)
+    loss = tf.square(adjusted_net_out - true) # loss function in yolo v1. xywh P(object) C
     loss = tf.multiply(loss, wght) # apply the scales
+    
     ### DEBUG
     # loss_min = tf.reduce_min(loss[:,:,:,4])
     # self.print_op.append(tf.Print(loss_min, [loss_min], message='loss min', summarize=100))
@@ -156,9 +132,9 @@ def loss(self, net_out):
     # loss_argmax = tf.where(tf.equal(loss[:,:,:,4], loss_max))
     # self.print_op.append(tf.Print(loss_argmax, [loss_argmax, tf.shape(loss_argmax)], message='loss argmax', summarize=100))
     
-    nans = tf.is_nan(loss)
-    points = tf.where(nans)
-    self.print_op.append(tf.Print(points, [points, tf.shape(points)], message="points that are nan in the loss: ", summarize=100))
+    # nans = tf.is_nan(loss)
+    # points = tf.where(nans)
+    # self.print_op.append(tf.Print(points, [points, tf.shape(points)], message="points that are nan in the loss: ", summarize=100))
     ###
 
     loss = tf.reshape(loss, [-1, H*W*B*(4 + 1 + C)])

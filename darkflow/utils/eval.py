@@ -56,8 +56,8 @@ def get_images_detection(files):
 # }
 def get_ground_truth(ann):
     try:
-        #return open_images_csv_gt(ann)
-        return bbox_label_gt(ann)
+        return open_images_csv_gt(ann)
+        # return bbox_label_gt(ann)
     except IOError:
         raise
 
